@@ -3,19 +3,30 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+
+  /* Brand colors */
+  --btn: #000271;
+  --btn-hover: #17acdd;
+  --primary: #17acdd;
+  --secondary: #5adfe8;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-btn: var(--btn);
+  --color-btn-hover: var(--btn-hover);
+  --color-primary: var(--primary);
+  --color-secondary: var(--secondary);
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #ffffff;
+    --foreground: #000000;
   }
 }
 
