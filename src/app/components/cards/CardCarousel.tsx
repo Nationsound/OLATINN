@@ -57,7 +57,7 @@ const CardCarousel: React.FC = () => {
     <section className="py-16 px-6 lg:px-20 bg-gray-50 relative">
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-3xl font-bold text-indigo-600">// Our Expertise</h2>
+        <h2 className="text-3xl font-bold text-indigo-600">{"// Our Expertise"}</h2>
 
         <div className="flex gap-4">
           <button

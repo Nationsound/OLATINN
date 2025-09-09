@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import Image from "next/image";
 
 export default function AboutDetails() {
   return (
@@ -14,7 +15,7 @@ export default function AboutDetails() {
           viewport={{ once: true }}
           className="flex-1"
         >
-          <img
+          <Image
             src="/images/about.png"
             alt="About OLATINN"
             width={500}
