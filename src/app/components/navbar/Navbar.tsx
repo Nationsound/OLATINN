@@ -17,7 +17,7 @@ const Navbar = () => {
       <div className="hidden md:flex justify-between items-center px-8 py-2 bg-[var(--primary)] text-white shadow-md">
         {/* Logo */}
         <Link href="/" className="flex items-center">
-          <Image src="/images/olatin.png" 
+          <Image src="/images/logomain1.png" 
           alt="OLATINN Logo" 
           width={60} 
           height={20}
@@ -54,7 +54,7 @@ const Navbar = () => {
       <div className="flex md:hidden justify-between items-center px-6 py-4 bg-[var(--secondary)] text-white">
         {/* Logo */}
         <Link href="/" className="flex items-center">
-          <Image src="/images/olatin.png" 
+          <Image src="/images/logomain1.png" 
           alt="OLATINN Logo" 
           width={60} 
           height={20}

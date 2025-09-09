@@ -1,9 +1,24 @@
 import React from 'react'
+import LandingPage from '../index/landpage/LandingPage'
+import TechTermsSection from '../index/techterms/TechTermSection'
+import BusinessTechSection from '../index/businesstech/BusinessTechSection'
+import AboutUsSection from '../index/aboutsection/AboutUsSection'
 
 const HomePage = () => {
   return (
-    <div className="h-screen flex justify-center items-center bg-gray-100">
-      <h1 className="text-5xl font-bold">Welcome to OLATINN Home Page 🚀</h1>
+    <div>
+      <div>
+        <LandingPage />
+      </div>
+      <div>
+        <TechTermsSection />
+      </div>
+      <div>
+        <BusinessTechSection />
+      </div>
+      <div>
+        <AboutUsSection />
+      </div>
     </div>
   )
 }

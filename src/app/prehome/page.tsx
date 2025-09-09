@@ -11,9 +11,13 @@ const PreHome = () => {
 
   return (
     <div
-      className="h-screen w-full flex flex-col justify-center items-center text-white bg-cover bg-center"
-      style={{ backgroundImage: "url('/images/prehome.jpg')" }} // replace with your image path
-    >
+      className="
+    min-h-screen w-full flex flex-col justify-center items-center 
+    text-white bg-cover bg-center bg-no-repeat
+    px-4 sm:px-6 lg:px-8
+  "
+  style={{ backgroundImage: "url('/images/prehome.jpg')" }}
+      >
       <h1 className="text-2xl font-bold mb-6">Welcome to OLATINN</h1>
       <button
         onClick={handleClick}
