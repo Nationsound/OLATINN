@@ -11,7 +11,7 @@ const slides = [
   },
   {
     id: 2,
-    text: "We Specialize On Scalable Cloud Infrastructure.",
+    text: "We Specialize In Scalable Cloud Infrastructure.",
     bg: "/images/slide2.jpg",
   },
   {

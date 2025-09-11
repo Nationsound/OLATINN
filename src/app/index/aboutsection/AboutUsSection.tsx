@@ -19,7 +19,7 @@ const AboutUsSection = () => {
         viewport={{ once: true }}
         className="max-w-3xl mx-auto px-6"
       >
-        <h2 className="text-3xl font-bold mb-6 text-gray-900">{"// About Us"}</h2>
+        <h2 className="text-2xl font-bold mb-6 text-[#000271]">{"// About Us"}</h2>
         <p className="text-lg text-gray-700 font-serif leading-relaxed tracking-wide mb-8 text-justify">
           At <span className="font-semibold">OLATINN</span>, we are passionate
           about delivering technology solutions that empower businesses and

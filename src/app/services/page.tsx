@@ -1,0 +1,22 @@
+import React from 'react'
+import ServiceHeader from '../index/serviceheader/ServiceHeader'
+import ServicesExplained from '../index/serviceterms/ServiceTerms'
+import WebsiteTypes from '../index/websitetypes/WebsiteTypes'
+
+const page = () => {
+  return (
+    <div>
+      <div>
+        <ServiceHeader />
+      </div>
+      <div>
+        <ServicesExplained />
+      </div>
+      <div>
+        <WebsiteTypes />
+      </div>
+    </div>
+  )
+}
+
+export default page
