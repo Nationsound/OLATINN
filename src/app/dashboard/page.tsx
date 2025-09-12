@@ -63,7 +63,7 @@ const Dashboard = () => {
   };
 
   // Partner Form submit
-  const handlePartnerSubmit = async (e) => {
+  const handlePartnerSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     try {
       const res = await fetch("http://localhost:5000/olatinn/api/partner", {
@@ -89,7 +89,7 @@ const Dashboard = () => {
   };
 
   // Subscribe Form submit
-  const handleSubscribeSubmit = async (e) => {
+  const handleSubscribeSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     try {
       const res = await fetch("http://localhost:5000/olatinn/api/subscribe", {
@@ -115,7 +115,7 @@ const Dashboard = () => {
   };
 
   // Booking form submit
-  const handleBookingSubmit = async (e) => {
+  const handleBookingSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     try {
       const res = await fetch("http://localhost:5000/olatinn/api/booking", {
