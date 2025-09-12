@@ -1,25 +1,43 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, ChangeEvent, FormEvent } from "react";
 import { useRouter } from "next/navigation";
 
+// --- Type definitions ---
+interface User {
+  fullName: string;
+  address: string;
+  age: number;
+}
+
+interface PartnerData {
+  company: string;
+  email: string;
+}
+
+interface BookingData {
+  service: string;
+  name: string;
+  email: string;
+}
+
 const Dashboard = () => {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState<User | null>(null);
   const [showPartnerForm, setShowPartnerForm] = useState(false);
   const [showSubscribeForm, setShowSubscribeForm] = useState(false);
   const [showBookingForm, setShowBookingForm] = useState(false);
   const [websiteType, setWebsiteType] = useState("");
-  const [bookingData, setBookingData] = useState({
+  const [bookingData, setBookingData] = useState<BookingData>({
     service: "",
     name: "",
     email: "",
   });
-  const [partnerData, setPartnerData] = useState({ company: "", email: "" });
+  const [partnerData, setPartnerData] = useState<PartnerData>({ company: "", email: "" });
   const [subscribeEmail, setSubscribeEmail] = useState("");
 
   const router = useRouter();
 
-  // Fetch user details
+  // --- Fetch user profile ---
   useEffect(() => {
     const fetchUser = async () => {
       try {
@@ -32,7 +50,7 @@ const Dashboard = () => {
         });
 
         if (res.ok) {
-          const data = await res.json();
+          const data: User = await res.json();
           setUser(data);
         } else {
           router.push("/signin");
@@ -46,7 +64,7 @@ const Dashboard = () => {
     fetchUser();
   }, [router]);
 
-  // Logout
+  // --- Logout handler ---
   const handleLogout = async () => {
     try {
       const res = await fetch("http://localhost:5000/olatinn/api/auth/signout", {
@@ -62,8 +80,8 @@ const Dashboard = () => {
     }
   };
 
-  // Partner Form submit
-  const handlePartnerSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  // --- Partner Form ---
+  const handlePartnerSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     try {
       const res = await fetch("http://localhost:5000/olatinn/api/partner", {
@@ -88,8 +106,8 @@ const Dashboard = () => {
     }
   };
 
-  // Subscribe Form submit
-  const handleSubscribeSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  // --- Subscribe Form ---
+  const handleSubscribeSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     try {
       const res = await fetch("http://localhost:5000/olatinn/api/subscribe", {
@@ -114,8 +132,8 @@ const Dashboard = () => {
     }
   };
 
-  // Booking form submit
-  const handleBookingSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  // --- Booking Form ---
+  const handleBookingSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     try {
       const res = await fetch("http://localhost:5000/olatinn/api/booking", {
@@ -193,7 +211,6 @@ const Dashboard = () => {
 
         {/* Action Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Partner Card */}
           <div
             onClick={() => setShowPartnerForm(!showPartnerForm)}
             className="bg-[#000271] text-white rounded-2xl p-6 shadow-lg cursor-pointer hover:bg-[#17acdd] transition"
@@ -202,7 +219,6 @@ const Dashboard = () => {
             <p className="mt-2 text-sm">Click to join our partner program.</p>
           </div>
 
-          {/* Subscribe Card */}
           <div
             onClick={() => setShowSubscribeForm(!showSubscribeForm)}
             className="bg-[#17acdd] text-white rounded-2xl p-6 shadow-lg cursor-pointer hover:bg-[#000271] transition"
@@ -211,7 +227,6 @@ const Dashboard = () => {
             <p className="mt-2 text-sm">Get frequent updates and stay connected.</p>
           </div>
 
-          {/* Booking Card */}
           <div
             onClick={() => setShowBookingForm(!showBookingForm)}
             className="bg-[#5adfe8] text-white rounded-2xl p-6 shadow-lg cursor-pointer hover:bg-[#17acdd] transition"
@@ -231,7 +246,9 @@ const Dashboard = () => {
                 placeholder="Company Name"
                 required
                 value={partnerData.company}
-                onChange={(e) => setPartnerData({ ...partnerData, company: e.target.value })}
+                onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                  setPartnerData({ ...partnerData, company: e.target.value })
+                }
                 className="w-full p-3 mb-4 border rounded-lg"
               />
               <input
@@ -239,7 +256,9 @@ const Dashboard = () => {
                 placeholder="Business Email"
                 required
                 value={partnerData.email}
-                onChange={(e) => setPartnerData({ ...partnerData, email: e.target.value })}
+                onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                  setPartnerData({ ...partnerData, email: e.target.value })
+                }
                 className="w-full p-3 mb-4 border rounded-lg"
               />
               <button className="bg-[#000271] text-white px-6 py-2 rounded-lg hover:bg-[#17acdd]">
@@ -259,7 +278,7 @@ const Dashboard = () => {
                 placeholder="Your Email"
                 required
                 value={subscribeEmail}
-                onChange={(e) => setSubscribeEmail(e.target.value)}
+                onChange={(e: ChangeEvent<HTMLInputElement>) => setSubscribeEmail(e.target.value)}
                 className="w-full p-3 mb-4 border rounded-lg"
               />
               <button className="bg-[#17acdd] text-white px-6 py-2 rounded-lg hover:bg-[#000271]">
@@ -277,7 +296,9 @@ const Dashboard = () => {
               <select
                 required
                 value={bookingData.service}
-                onChange={(e) => setBookingData({ ...bookingData, service: e.target.value })}
+                onChange={(e: ChangeEvent<HTMLSelectElement>) =>
+                  setBookingData({ ...bookingData, service: e.target.value })
+                }
                 className="w-full p-3 mb-4 border rounded-lg"
               >
                 <option value="">Select Service</option>
@@ -285,23 +306,24 @@ const Dashboard = () => {
                 <option value="Frontend">Frontend</option>
                 <option value="Backend">Backend</option>
                 <option value="Website">Website (All Types)</option>
-                <option value="Static HTML with DOM manipulation">Static HTML with DOM manipulation</option>
+                <option value="Static HTML with DOM manipulation">Static HTML</option>
                 <option value="Graphic Design">Graphic Design</option>
                 <option value="Product Design">Product Design</option>
                 <option value="Data Analytics">Data Analytics</option>
               </select>
 
-              {/* Show website types if 'Website' selected */}
               {bookingData.service === "Website" && (
                 <select
                   required
                   value={websiteType}
-                  onChange={(e) => setWebsiteType(e.target.value)}
+                  onChange={(e: ChangeEvent<HTMLSelectElement>) => setWebsiteType(e.target.value)}
                   className="w-full p-3 mb-4 border rounded-lg"
                 >
                   <option value="">Select Website Type</option>
                   {websiteOptions.map((type) => (
-                    <option key={type} value={type}>{type}</option>
+                    <option key={type} value={type}>
+                      {type}
+                    </option>
                   ))}
                 </select>
               )}
@@ -311,7 +333,9 @@ const Dashboard = () => {
                 placeholder="Your Name"
                 required
                 value={bookingData.name}
-                onChange={(e) => setBookingData({ ...bookingData, name: e.target.value })}
+                onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                  setBookingData({ ...bookingData, name: e.target.value })
+                }
                 className="w-full p-3 mb-4 border rounded-lg"
               />
 
@@ -320,11 +344,16 @@ const Dashboard = () => {
                 placeholder="Your Email"
                 required
                 value={bookingData.email}
-                onChange={(e) => setBookingData({ ...bookingData, email: e.target.value })}
+                onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                  setBookingData({ ...bookingData, email: e.target.value })
+                }
                 className="w-full p-3 mb-4 border rounded-lg"
               />
 
-              <button type="submit" className="bg-[#5adfe8] text-white px-6 py-2 rounded-lg hover:bg-[#17acdd]">
+              <button
+                type="submit"
+                className="bg-[#5adfe8] text-white px-6 py-2 rounded-lg hover:bg-[#17acdd]"
+              >
                 Submit Booking
               </button>
             </form>
