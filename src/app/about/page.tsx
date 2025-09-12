@@ -11,16 +11,13 @@ const page = () => {
         <AboutHeader />
       </div>
       <div>
-        <BrandingSection />
-      </div>
-      <div>
         <AboutDetails />
       </div>
       <div>
-        <CardCarousel />
+        <BrandingSection />
       </div>
       <div>
-        <BrandingSection />
+        <CardCarousel />
       </div>
     </div>
   )
