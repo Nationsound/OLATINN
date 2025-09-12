@@ -33,7 +33,7 @@ const ServiceSection = () => {
       <div className="max-w-6xl mx-auto text-center">
         {/* Header */}
         <h2 className="text-2xl md:text-base font-bold uppercase tracking-widest text-[var(--btn)] mb-4">
-          // Our Services
+          {"// Our Services"}
         </h2>
         <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6">
           Redefining Business Potential with Smart Solutions

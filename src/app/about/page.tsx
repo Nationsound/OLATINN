@@ -14,7 +14,7 @@ const page = () => {
         <AboutDetails />
       </div>
       <div>
-        <BrandingSection />
+        <BrandingSection /> 
       </div>
       <div>
         <CardCarousel />

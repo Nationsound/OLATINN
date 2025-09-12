@@ -15,7 +15,7 @@ const GoalsSection = () => {
           viewport={{ once: true, amount: 0.3 }}
           transition={{ duration: 0.6, ease: "easeOut" }}
         >
-          // Our Goal
+          {'// Our Goal'}
         </motion.h2>
 
         {/* Big Headline */}

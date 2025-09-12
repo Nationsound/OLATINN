@@ -22,7 +22,7 @@ const HomePage = () => {
         <TechTermsSection />
       </div>
       <div>
-        <BusinessTechSection /> 
+        <BusinessTechSection />  
       </div>
       <div>
         <AboutUsSection />

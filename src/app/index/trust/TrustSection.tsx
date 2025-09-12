@@ -53,7 +53,7 @@ const TrustSection = () => {
     <section className="py-16 px-6 md:px-12 lg:px-20 bg-gradient-to-b from-gray-50 via-white to-gray-100">
       <div className="max-w-5xl mx-auto text-center">
         <h2 className="text-lg md:text-base uppercase tracking-widest text-[var(--btn)] mb-4">
-          // Why Trust Olatinn
+          {"// Why Trust Olatinn"}
         </h2>
         <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6">
           Built on Reliability, Driven by Integrity

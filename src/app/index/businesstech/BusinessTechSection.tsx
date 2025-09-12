@@ -2,6 +2,7 @@
 import { motion, useScroll, useTransform } from "framer-motion";
 import { FaQuoteLeft } from "react-icons/fa";
 import { useRef } from "react";
+import Image from "next/image";
 
 const BusinessTechSection = () => {
 
@@ -25,9 +26,11 @@ const BusinessTechSection = () => {
           transition={{ duration: 0.6, ease: "easeInOut" }}
           className="w-full md:w-1/2 h-[1180px] rounded-2xl shadow-lg overflow-hidden relative"
         >
-          <img
+          <Image
             src="/images/biz1.jpg"
             alt="Technology in Business"
+            width={600}
+            height={400}
             className="w-full h-full object-cover hover:opacity-90 transition duration-500"
           />
         </motion.div>
