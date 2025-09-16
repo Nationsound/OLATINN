@@ -3,6 +3,7 @@
 import { useEffect, useState, ChangeEvent, FormEvent } from "react";
 import { useRouter } from "next/navigation";
 
+
 // --- Type definitions ---
 interface User {
   fullName: string;
@@ -84,7 +85,7 @@ const Dashboard = () => {
   const handlePartnerSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     try {
-      const res = await fetch("http://localhost:5000/olatinn/api/partner", {
+      const res = await fetch("http://localhost:5000/olatinn/api/partners", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -110,7 +111,7 @@ const Dashboard = () => {
   const handleSubscribeSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     try {
-      const res = await fetch("http://localhost:5000/olatinn/api/subscribe", {
+      const res = await fetch("http://localhost:5000/olatinn/api/subscribers/subscribe", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -136,7 +137,7 @@ const Dashboard = () => {
   const handleBookingSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     try {
-      const res = await fetch("http://localhost:5000/olatinn/api/booking", {
+      const res = await fetch("http://localhost:5000/olatinn/api/bookings/booking", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -187,7 +188,7 @@ const Dashboard = () => {
             <h1 className="text-4xl font-bold text-[#000271]">
               Welcome To OLATINN, <span className="text-[#17acdd]">{firstName}</span>
             </h1>
-            <p className="text-gray-600 mt-2 text-lg">Your business hub for growth enhancement</p>
+            <p className="text-gray-600 mt-2 text-lg">Our creative hub for business enhancement</p>
           </div>
           <button
             onClick={handleLogout}
@@ -360,6 +361,7 @@ const Dashboard = () => {
           </div>
         )}
       </div>
+      
     </div>
   );
 };
