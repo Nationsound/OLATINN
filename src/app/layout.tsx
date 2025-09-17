@@ -5,6 +5,7 @@ import Navbar from "./components/navbar/Navbar";
 import Footer from "./components/footer/Footer";
 import ChatBox from "./components/chat/ChatBox";
 import UserChatWidget from "./components/chat/ChatBox";
+import { BlogProvider } from "./context/BlogContext";
 
 
 const geistSans = Geist({
@@ -33,7 +34,9 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-white text-gray-900`}
       >
         <Navbar />
-        <main className="min-h-screen">{children}</main>
+        <main className="min-h-screen">
+          <BlogProvider> {children} </BlogProvider>
+          </main>
         <UserChatWidget 
       />
         <Footer />

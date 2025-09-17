@@ -1,6 +1,6 @@
+import BlogDetails from '@/app/index/blogdetails/BlogDetails'
+import BlogHeader from '@/app/index/blogheader/BlogHeader'
 import React from 'react'
-import BlogList from '../index/bloglist/BlogList'
-import BlogHeader from '../index/blogheader/BlogHeader'
 
 const page = () => {
   return (
@@ -9,7 +9,7 @@ const page = () => {
         <BlogHeader />
       </div>
       <div>
-        <BlogList />
+        <BlogDetails />
       </div>
     </div>
   )
