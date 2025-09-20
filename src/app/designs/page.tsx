@@ -1,13 +1,17 @@
 import React from 'react'
+import DesignHeader from '../index/designheader/DesignHeader'
+import DesignFeed from '../index/designFeed/DesignFeed'
 
 const page = () => {
   return (
-    <main className="p-8">
-      <h1 className="text-4xl font-bold">Our Designs</h1>
-      <p className="mt-4 text-lg text-gray-600">
-        Welcome to the our design section. Posts coming soon!
-      </p>
-    </main>
+    <div>
+      <div>
+        <DesignHeader />
+      </div>
+      <div>
+        <DesignFeed />
+      </div>
+    </div>
   )
 }
 

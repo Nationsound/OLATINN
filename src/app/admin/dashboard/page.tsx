@@ -2,6 +2,7 @@
 import AdminBlogForm from '@/app/components/adminBlog/AdminBlogForm'
 import AdminChat from '@/app/components/adminChat/adminChat'
 import AdminDashboard from '@/app/components/adminDetails/AdminDashboard'
+import DesignTemplate from '@/app/index/designtemplate/DesignTemplate'
 import React from 'react'
 
 const page = () => {
@@ -10,12 +11,18 @@ const page = () => {
       <div>
         <AdminDashboard />
       </div>
+      <div className='flex gap-8 justify-around'>
+        <div>
+        <DesignTemplate />
+      </div>
       <div>
         <AdminBlogForm />
+      </div>
       </div>
       <div>
         <AdminChat />
       </div>
+      
     </div>
   )
 }

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, ChangeEvent, FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import UserDashboardDesigns from "../index/userDashboardDesign/UserDashboardDesign";
 
 
 // --- Type definitions ---
@@ -360,6 +361,9 @@ const Dashboard = () => {
             </form>
           </div>
         )}
+      </div>
+      <div className="mt-10">
+        <UserDashboardDesigns />
       </div>
       
     </div>

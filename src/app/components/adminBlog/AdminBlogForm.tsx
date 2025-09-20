@@ -132,7 +132,7 @@ const handleEdit = (blog: any) => {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
     >
-      <h2 className="text-2xl font-bold mb-6 text-[#000271]">
+      <h2 className="text-2xl font-bold mb-6 mt-5 text-[#000271]">
         {editingId ? "Edit Blog Post" : "Create Blog Post"}
       </h2>
 

@@ -140,7 +140,7 @@ const AdminDashboard: React.FC = () => {
   }, [activeTab]);
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-100 mt-18">
+    <div className="min-h-screen flex flex-col bg-white mt-18">
       {/* Top Navbar */}
       <div className="bg-[#17acdd] text-white px-6 py-4 shadow">
         <h1 className="text-2xl font-bold">Admin Dashboard</h1>
