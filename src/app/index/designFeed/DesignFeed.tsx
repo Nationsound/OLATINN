@@ -319,81 +319,114 @@ const DesignFeed: React.FC = () => {
 
   return (
     <div className="max-w-5xl mx-auto space-y-12 p-4">
-      {designs.map((design) => (
-        <div key={design._id} className="bg-white shadow-lg rounded-2xl overflow-hidden">
-          <div className="w-full h-[500px] md:h-[600px] relative bg-gray-200">
-            {design.image ? (
-              <Image src={design.image} alt={design.title} fill className="object-cover" />
-            ) : (
-              <div className="flex items-center justify-center h-full text-gray-400">No Image</div>
-            )}
-          </div>
-
-          <div className="p-8">
-            <h2 className="text-4xl md:text-5xl font-extrabold text-gray-900">{design.title}</h2>
-            <p className="mt-4 text-lg md:text-xl text-gray-700">{design.description}</p>
-            {design.link && (
-              <a
-                href={design.link}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-block mt-3 text-blue-600"
-              >
-                Visit Link
-              </a>
-            )}
-
-            <div className="flex gap-6 mt-6">
-              <button onClick={() => handleInteraction(design._id, "like")} className="flex items-center gap-2 text-gray-600">
-                <FaHeart /> {design.likes || 0}
-              </button>
-              <button onClick={() => handleInteraction(design._id, "comment")} className="flex items-center gap-2 text-gray-600">
-                <FaCommentAlt /> {comments[design._id]?.length || 0}
-              </button>
-              <button onClick={() => handleInteraction(design._id, "share")} className="flex items-center gap-2 text-gray-600">
-                <FaShareAlt />
-              </button>
+  {Array.isArray(designs) &&
+    designs.map((design) => (
+      <div key={String(design._id)} className="bg-white shadow-lg rounded-2xl overflow-hidden">
+        {/* Image */}
+        <div className="w-full h-[500px] md:h-[600px] relative bg-gray-200">
+          {design.image && typeof design.image === "string" ? (
+            <Image
+              src={design.image}
+              alt={typeof design.title === "string" ? design.title : "Design image"}
+              fill
+              className="object-cover"
+            />
+          ) : (
+            <div className="flex items-center justify-center h-full text-gray-400">
+              No Image
             </div>
-
-            {activeCommentBox === design._id && (
-              <div className="mt-6 border-t pt-4">
-                {comments[design._id]?.map((c) => (
-                  <CommentItem key={c._id} comment={c} designId={design._id} />
-                ))}
-
-                {/* New comment input */}
-                <div className="mt-4">
-                  <textarea
-                    value={commentInputs[design._id] || ""}
-                    onChange={handleCommentChange(design._id)}
-                    placeholder="Write a comment..."
-                    className="w-full border rounded-lg p-2"
-                  />
-                  <button
-                    onClick={async () => {
-                      if (!commentInputs[design._id]?.trim()) return;
-                      const newComment = await authorizedFetch<CommentType>(
-                        `${baseUrl}/olatinn/api/designComments/${design._id}`,
-                        "POST",
-                        { text: commentInputs[design._id] }
-                      );
-                      setComments((prev) => ({
-                        ...prev,
-                        [design._id]: [newComment, ...(prev[design._id] || [])],
-                      }));
-                      setCommentInputs((prev) => ({ ...prev, [design._id]: "" }));
-                    }}
-                    className="bg-[#000271] text-white px-4 py-2 rounded mt-2 hover:bg-[#17acdd]"
-                  >
-                    Post Comment
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
+          )}
         </div>
-      ))}
-    </div>
+
+        {/* Text */}
+        <div className="p-8">
+          <h2 className="text-4xl md:text-5xl font-extrabold text-gray-900">
+            {typeof design.title === "string" ? design.title : "Untitled Design"}
+          </h2>
+          <p className="mt-4 text-lg md:text-xl text-gray-700">
+            {typeof design.description === "string"
+              ? design.description
+              : "No description available."}
+          </p>
+
+          {design.link && typeof design.link === "string" && (
+            <a
+              href={design.link}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-block mt-3 text-blue-600"
+            >
+              Visit Link
+            </a>
+          )}
+
+          {/* Buttons */}
+          <div className="flex gap-6 mt-6">
+            <button
+              onClick={() => handleInteraction(design._id, "like")}
+              className="flex items-center gap-2 text-gray-600"
+            >
+              <FaHeart /> {typeof design.likes === "number" ? design.likes : 0}
+            </button>
+            <button
+              onClick={() => handleInteraction(design._id, "comment")}
+              className="flex items-center gap-2 text-gray-600"
+            >
+              <FaCommentAlt />{" "}
+              {Array.isArray(comments[design._id]) ? comments[design._id].length : 0}
+            </button>
+            <button
+              onClick={() => handleInteraction(design._id, "share")}
+              className="flex items-center gap-2 text-gray-600"
+            >
+              <FaShareAlt />
+            </button>
+          </div>
+
+          {/* Comments Section */}
+          {activeCommentBox === design._id && (
+            <div className="mt-6 border-t pt-4">
+              {Array.isArray(comments[design._id]) &&
+                comments[design._id].map((c) =>
+                  c && typeof c === "object" ? (
+                    <CommentItem key={String(c._id)} comment={c} designId={design._id} />
+                  ) : null
+                )}
+
+              {/* New comment input */}
+              <div className="mt-4">
+                <textarea
+                  value={commentInputs[design._id] || ""}
+                  onChange={handleCommentChange(design._id)}
+                  placeholder="Write a comment..."
+                  className="w-full border rounded-lg p-2"
+                />
+                <button
+                  onClick={async () => {
+                    if (!commentInputs[design._id]?.trim()) return;
+                    const newComment = await authorizedFetch<CommentType>(
+                      `${baseUrl}/olatinn/api/designComments/${design._id}`,
+                      "POST",
+                      { text: commentInputs[design._id] }
+                    );
+                    setComments((prev) => ({
+                      ...prev,
+                      [design._id]: [newComment, ...(prev[design._id] || [])],
+                    }));
+                    setCommentInputs((prev) => ({ ...prev, [design._id]: "" }));
+                  }}
+                  className="bg-[#000271] text-white px-4 py-2 rounded mt-2 hover:bg-[#17acdd]"
+                >
+                  Post Comment
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    ))}
+</div>
+
   );
 };
 

@@ -10,12 +10,12 @@ const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 // --- Types ---
 interface User {
   _id: string;
-  fullName: string;
+  fullName?: string;
 }
 
 interface CommentType {
   _id: string;
-  text: string;
+  text: string | object;
   likes: number;
   user: User;
   replies?: CommentType[];
@@ -23,8 +23,8 @@ interface CommentType {
 
 interface Design {
   _id: string;
-  title: string;
-  description: string;
+  title: string | object;
+  description: string | object;
   image?: string;
   link?: string;
   date: string;
@@ -61,15 +61,18 @@ const stringToColor = (str: string) => {
   return "#" + "00000".substring(0, 6 - c.length) + c;
 };
 
-const getUserName = (user?: User) => user?.fullName || "Unknown User";
-const getUserInitials = (user?: User) =>
-  user?.fullName
-    ? user.fullName
-        .split(" ")
-        .map((n) => n[0])
-        .join("")
-        .toUpperCase()
-    : "U";
+const safeText = (value: string | object | undefined | null) =>
+  typeof value === "string" ? value : value ? JSON.stringify(value) : "";
+
+const getUserName = (user?: User) => (user?.fullName ? safeText(user.fullName) : "Unknown User");
+const getUserInitials = (user?: User) => {
+  if (!user?.fullName) return "U";
+  return user.fullName
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase();
+};
 
 // --- Recursive comment updater ---
 const updateCommentsRecursively = (
@@ -101,18 +104,14 @@ const CommentSection: React.FC<CommentSectionProps> = ({ comments, setComments, 
   const [token, setToken] = useState<string | null>(null);
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      setToken(localStorage.getItem("olatinnToken"));
-    }
+    if (typeof window !== "undefined") setToken(localStorage.getItem("olatinnToken"));
   }, []);
 
   const handleLikeComment = async (commentId: string) => {
     if (!currentUserId) return router.push("/signup");
-
     setComments((prev) =>
       updateCommentsRecursively(prev, commentId, (c) => ({ ...c, likes: (c.likes || 0) + 1 }))
     );
-
     try {
       await fetch(`${baseUrl}/olatinn/api/designComments/like/${commentId}`, {
         method: "PATCH",
@@ -123,10 +122,10 @@ const CommentSection: React.FC<CommentSectionProps> = ({ comments, setComments, 
     }
   };
 
-  const handleEditComment = async (commentId: string, oldText: string) => {
+  const handleEditComment = async (commentId: string, oldText: string | object) => {
     if (typeof window === "undefined") return;
-    const newText = prompt("Edit your comment", oldText);
-    if (!newText || newText === oldText) return;
+    const newText = prompt("Edit your comment", safeText(oldText));
+    if (!newText || newText === safeText(oldText)) return;
 
     try {
       const res = await fetch(`${baseUrl}/olatinn/api/designComments/${commentId}`, {
@@ -136,7 +135,6 @@ const CommentSection: React.FC<CommentSectionProps> = ({ comments, setComments, 
       });
       if (!res.ok) throw new Error("Failed to edit comment");
       const updatedComment: CommentType = await res.json();
-
       setComments((prev) => updateCommentsRecursively(prev, commentId, () => updatedComment));
     } catch (err) {
       console.error(err);
@@ -171,11 +169,9 @@ const CommentSection: React.FC<CommentSectionProps> = ({ comments, setComments, 
       });
       if (!res.ok) throw new Error("Failed to reply");
       const newReply: CommentType = await res.json();
-
       setComments((prev) =>
         updateCommentsRecursively(prev, parentId, (c) => ({ ...c, replies: [newReply, ...(c.replies || [])] }))
       );
-
       setReplyInputs((prev) => ({ ...prev, [parentId]: "" }));
       setActiveReplyBox(null);
     } catch (err) {
@@ -185,7 +181,6 @@ const CommentSection: React.FC<CommentSectionProps> = ({ comments, setComments, 
 
   const handlePostComment = async () => {
     if (!commentInput.trim()) return;
-
     try {
       const res = await fetch(`${baseUrl}/olatinn/api/designComments/${designId}`, {
         method: "POST",
@@ -194,7 +189,6 @@ const CommentSection: React.FC<CommentSectionProps> = ({ comments, setComments, 
       });
       if (!res.ok) throw new Error("Failed to post comment");
       const newComment: CommentType = await res.json();
-
       setComments((prev) => [newComment, ...prev]);
       setCommentInput("");
     } catch (err) {
@@ -202,21 +196,19 @@ const CommentSection: React.FC<CommentSectionProps> = ({ comments, setComments, 
     }
   };
 
-  // --- Safely render a comment ---
   const CommentItem: React.FC<{ comment: CommentType }> = ({ comment }) => {
     if (!comment._id || !comment.user) return null;
-
     return (
       <div className="flex gap-3 items-start bg-gray-100 p-3 rounded-lg mt-2">
         <div
           className="w-10 h-10 flex items-center justify-center rounded-full text-white font-bold cursor-pointer"
-          style={{ backgroundColor: stringToColor(comment.user.fullName) }}
+          style={{ backgroundColor: stringToColor(getUserName(comment.user)) }}
         >
           {getUserInitials(comment.user)}
         </div>
         <div className="flex-1">
           <p className="font-semibold">{getUserName(comment.user)}</p>
-          <p className="text-gray-700">{comment.text}</p>
+          <p className="text-gray-700">{safeText(comment.text)}</p>
           <div className="flex gap-3 text-sm mt-1">
             <button onClick={() => handleLikeComment(comment._id)} className="flex items-center gap-1 text-red-500">
               <FaHeart /> {comment.likes || 0}
@@ -244,7 +236,6 @@ const CommentSection: React.FC<CommentSectionProps> = ({ comments, setComments, 
               </>
             )}
           </div>
-
           {activeReplyBox === comment._id && (
             <div className="ml-12 mt-2">
               <textarea
@@ -253,15 +244,11 @@ const CommentSection: React.FC<CommentSectionProps> = ({ comments, setComments, 
                 placeholder="Write a reply..."
                 className="w-full border rounded p-2"
               />
-              <button
-                onClick={() => handleReplySubmit(comment._id)}
-                className="bg-green-600 text-white px-3 py-1 mt-1 rounded"
-              >
+              <button onClick={() => handleReplySubmit(comment._id)} className="bg-green-600 text-white px-3 py-1 mt-1 rounded">
                 Post Reply
               </button>
             </div>
           )}
-
           {comment.replies?.map((r) =>
             r._id && r.user ? (
               <div key={r._id} className="ml-12">
@@ -326,12 +313,15 @@ const DesignPage: React.FC = () => {
         const designData: Design = await designRes.json();
         const commentsData: CommentType[] = await commentsRes.json();
 
+        // Safe guards
+        if (!Array.isArray(commentsData)) setComments([]);
+        else setComments(commentsData);
+
         // Ensure design.image and design.link are strings
         if (designData.image && typeof designData.image !== "string") designData.image = undefined;
         if (designData.link && typeof designData.link !== "string") designData.link = undefined;
 
         setDesign(designData);
-        setComments(commentsData);
       } catch (err) {
         console.error(err);
       }
@@ -371,57 +361,87 @@ const DesignPage: React.FC = () => {
 
   return (
     <div className="max-w-4xl mx-auto p-4 space-y-8">
-      <div className="bg-white shadow-lg rounded-xl overflow-hidden">
-        {design.image ? (
-          <div className="relative w-full h-[400px]">
-            <Image src={design.image} alt={design.title} fill className="object-cover" />
-          </div>
-        ) : (
-          <div className="flex items-center justify-center h-[400px] text-gray-400">No Image</div>
-        )}
-
-        <div className="p-6">
-          <h2 className="text-3xl font-bold">{design.title}</h2>
-          <p className="mt-2 text-gray-700">{design.description}</p>
-
-          {design.link && typeof design.link === "string" && (
-            <a
-              href={design.link}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-600 hover:underline"
-            >
-              Visit Link
-            </a>
-          )}
-
-          <p className="text-sm text-gray-400 mt-1">
-            Posted on: {new Date(design.date).toLocaleDateString()}
-          </p>
-
-          <div className="flex gap-4 mt-4">
-            <button onClick={handleLikeDesign} className="flex items-center gap-1 text-red-500">
-              <FaHeart /> {design.likes || 0}
-            </button>
-            <button className="flex items-center gap-1 text-green-600">
-              <FaCommentAlt /> {comments.length}
-            </button>
-            <button onClick={handleShareDesign} className="flex items-center gap-1 text-purple-600">
-              <FaShareAlt /> Share
-            </button>
-          </div>
-
-          <div className="mt-6">
-            <CommentSection
-              comments={comments}
-              setComments={setComments}
-              currentUserId={currentUserId}
-              designId={design._id}
-            />
-          </div>
-        </div>
+  <div className="bg-white shadow-lg rounded-xl overflow-hidden">
+    {/* Design Image */}
+    {design.image && typeof design.image === "string" ? (
+      <div className="relative w-full h-[400px]">
+        <Image
+          src={design.image}
+          alt={typeof design.title === "string" ? design.title : "Design Image"}
+          fill
+          className="object-cover"
+        />
       </div>
+    ) : (
+      <div className="flex items-center justify-center h-[400px] text-gray-400">
+        No Image
+      </div>
+    )}
+
+    <div className="p-6">
+      {/* Title */}
+      <h2 className="text-3xl font-bold">
+        {typeof design.title === "string" ? design.title : "Untitled Design"}
+      </h2>
+
+      {/* Description */}
+      <p className="mt-2 text-gray-700">
+        {typeof design.description === "string" ? design.description : "No description available."}
+      </p>
+
+      {/* Link */}
+      {design.link && typeof design.link === "string" && (
+        <a
+          href={design.link}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-blue-600 hover:underline"
+        >
+          Visit Link
+        </a>
+      )}
+
+      {/* Posted Date */}
+      {design.date && typeof design.date === "string" && (
+        <p className="text-sm text-gray-400 mt-1">
+          Posted on: {new Date(design.date).toLocaleDateString()}
+        </p>
+      )}
+
+      {/* Action Buttons */}
+      <div className="flex gap-4 mt-4">
+        <button
+          onClick={handleLikeDesign}
+          className="flex items-center gap-1 text-red-500"
+        >
+          <FaHeart /> {typeof design.likes === "number" ? design.likes : 0}
+        </button>
+        <button className="flex items-center gap-1 text-green-600">
+          <FaCommentAlt /> {Array.isArray(comments) ? comments.length : 0}
+        </button>
+        <button
+          onClick={handleShareDesign}
+          className="flex items-center gap-1 text-purple-600"
+        >
+          <FaShareAlt /> Share
+        </button>
+      </div>
+
+      {/* Comments */}
+      {Array.isArray(comments) && (
+        <div className="mt-6">
+          <CommentSection
+            comments={comments}
+            setComments={setComments}
+            currentUserId={currentUserId}
+            designId={typeof design._id === "string" ? design._id : ""}
+          />
+        </div>
+      )}
     </div>
+  </div>
+</div>
+
   );
 };
 
