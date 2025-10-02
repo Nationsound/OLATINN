@@ -30,7 +30,7 @@ interface AdminUser {
 }
 
 const AdminDashboard: React.FC = () => {
-  const [activeTab, setActiveTab] = useState("bookings");
+  const [activeTab, setActiveTab] = useState<"bookings" | "subscribers" | "partners" | "admins">("bookings");
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [subscribers, setSubscribers] = useState<Subscriber[]>([]);
   const [partners, setPartners] = useState<Partner[]>([]);
@@ -40,8 +40,8 @@ const AdminDashboard: React.FC = () => {
 
   const apiBase = process.env.NEXT_PUBLIC_API_URL;
 
-  // ✅ Generic fetcher
-  const fetchData = async (endpoint: string, setter: Function) => {
+  // ✅ Generic typed fetcher
+  const fetchData = async <T,>(endpoint: string, setter: React.Dispatch<React.SetStateAction<T>>) => {
     try {
       setLoading(true);
       const token = localStorage.getItem("adminToken");
@@ -54,7 +54,7 @@ const AdminDashboard: React.FC = () => {
       });
 
       if (!res.ok) throw new Error("Failed to fetch data");
-      const data = await res.json();
+      const data: T = await res.json();
       setter(data);
     } catch (err) {
       console.error("❌ Fetch error:", err);
@@ -63,15 +63,13 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
-  // ✅ CRUD actions for Bookings
-  const handleDeleteBooking = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this booking?")) return;
+  // ✅ CRUD actions
+  const handleDelete = async (endpoint: string, id: string, setter: React.Dispatch<React.SetStateAction<any[]>>) => {
+    if (!confirm("Are you sure you want to delete this item?")) return;
     try {
-      const res = await fetch(`${apiBase}/olatinn/api/bookings/${id}`, {
-        method: "DELETE",
-      });
-      if (!res.ok) throw new Error("Failed to delete booking");
-      setBookings((prev) => prev.filter((b) => b._id !== id));
+      const res = await fetch(`${apiBase}${endpoint}/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to delete");
+      setter((prev) => prev.filter((item) => item._id !== id));
     } catch (err) {
       console.error("❌ Delete error:", err);
     }
@@ -80,14 +78,11 @@ const AdminDashboard: React.FC = () => {
   const handleUpdateBooking = async () => {
     if (!editingBooking) return;
     try {
-      const res = await fetch(
-        `${apiBase}/olatinn/api/bookings/${editingBooking._id}`,
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(editingBooking),
-        }
-      );
+      const res = await fetch(`${apiBase}/olatinn/api/bookings/${editingBooking._id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(editingBooking),
+      });
       if (!res.ok) throw new Error("Failed to update booking");
       const updated = await res.json();
       setBookings((prev) =>
@@ -99,66 +94,44 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
-  // ✅ Delete Subscriber
-  const handleDeleteSubscriber = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this subscriber?")) return;
-    try {
-      const res = await fetch(`${apiBase}/olatinn/api/subscribers/${id}`, {
-        method: "DELETE",
-      });
-      if (!res.ok) throw new Error("Failed to delete subscriber");
-      setSubscribers((prev) => prev.filter((s) => s._id !== id));
-    } catch (err) {
-      console.error("❌ Delete error:", err);
-    }
-  };
-
-  // ✅ Delete Partner
-  const handleDeletePartner = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this partner?")) return;
-    try {
-      const res = await fetch(`${apiBase}/olatinn/api/partners/${id}`, {
-        method: "DELETE",
-      });
-      if (!res.ok) throw new Error("Failed to delete partner");
-      setPartners((prev) => prev.filter((p) => p._id !== id));
-    } catch (err) {
-      console.error("❌ Delete error:", err);
-    }
-  };
-
   // ✅ Fetch per tab change
   useEffect(() => {
-    if (activeTab === "bookings")
-      fetchData("/olatinn/api/bookings", setBookings);
-    if (activeTab === "subscribers")
-      fetchData("/olatinn/api/subscribers", setSubscribers);
-    if (activeTab === "partners")
-      fetchData("/olatinn/api/partners", setPartners);
-    if (activeTab === "admins")
-      fetchData("/olatinn/api/admin/list", setAdmins);
+    const loadData = () => {
+      if (activeTab === "bookings") fetchData<Booking[]>("/olatinn/api/bookings", setBookings);
+      if (activeTab === "subscribers") fetchData<Subscriber[]>("/olatinn/api/subscribers", setSubscribers);
+      if (activeTab === "partners") fetchData<Partner[]>("/olatinn/api/partners", setPartners);
+      if (activeTab === "admins") fetchData<AdminUser[]>("/olatinn/api/admin/list", setAdmins);
+    };
+    loadData();
   }, [activeTab]);
 
   return (
     <div className="min-h-screen flex flex-col bg-white mt-18">
-      {/* Top Navbar */}
       <div className="bg-[#17acdd] text-white px-6 py-4 shadow">
         <h1 className="text-2xl font-bold">Admin Dashboard</h1>
       </div>
 
-      {/* Reusable Header */}
-      <AdminHeader activeTab={activeTab} setActiveTab={setActiveTab} />
+      <AdminHeader
+  activeTab={activeTab}
+  setActiveTab={(tab: string) => {
+    if (
+      tab === "bookings" ||
+      tab === "subscribers" ||
+      tab === "partners" ||
+      tab === "admins"
+    ) {
+      setActiveTab(tab);
+    }
+  }}
+/>
 
-      {/* Main Content */}
       <main className="flex-1 p-6">
         {loading && <p className="text-gray-500">Loading...</p>}
 
         {/* Bookings */}
         {activeTab === "bookings" && (
           <section className="bg-white p-6 rounded-xl shadow-md">
-            <h2 className="text-xl font-semibold text-[#17acdd] mb-4">
-              Bookings
-            </h2>
+            <h2 className="text-xl font-semibold text-[#17acdd] mb-4">Bookings</h2>
             <table className="w-full border-collapse border text-sm">
               <thead className="bg-gray-100">
                 <tr>
@@ -174,86 +147,44 @@ const AdminDashboard: React.FC = () => {
                 {bookings.map((b) => (
                   <tr key={b._id}>
                     <td className="border px-4 py-2">{b.service}</td>
-                    <td className="border px-4 py-2">
-                      {b.websiteType || "N/A"}
-                    </td>
+                    <td className="border px-4 py-2">{b.websiteType || "N/A"}</td>
                     <td className="border px-4 py-2">{b.name}</td>
                     <td className="border px-4 py-2">{b.email}</td>
                     <td className="border px-4 py-2">
-                      {b.createdAt
-                        ? new Date(b.createdAt).toLocaleDateString()
-                        : "N/A"}
+                      {b.createdAt ? new Date(b.createdAt).toLocaleDateString() : "N/A"}
                     </td>
                     <td className="border px-4 py-2 space-x-2">
-                      <button
-                        onClick={() => setEditingBooking(b)}
-                        className="text-blue-600 hover:underline"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => handleDeleteBooking(b._id)}
-                        className="text-red-600 hover:underline"
-                      >
-                        Delete
-                      </button>
+                      <button onClick={() => setEditingBooking(b)} className="text-blue-600 hover:underline">Edit</button>
+                      <button onClick={() => handleDelete("/olatinn/api/bookings", b._id, setBookings)} className="text-red-600 hover:underline">Delete</button>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
 
-            {/* Edit Form Modal */}
             {editingBooking && (
               <div className="mt-6 p-4 border rounded-lg bg-gray-50">
-                <h3 className="text-lg font-semibold mb-3 text-[#17acdd]">
-                  Edit Booking
-                </h3>
+                <h3 className="text-lg font-semibold mb-3 text-[#17acdd]">Edit Booking</h3>
                 <input
                   type="text"
                   value={editingBooking.name}
-                  onChange={(e) =>
-                    setEditingBooking({
-                      ...editingBooking,
-                      name: e.target.value,
-                    })
-                  }
+                  onChange={(e) => setEditingBooking({ ...editingBooking, name: e.target.value })}
                   className="w-full p-2 mb-2 border rounded"
                 />
                 <input
                   type="email"
                   value={editingBooking.email}
-                  onChange={(e) =>
-                    setEditingBooking({
-                      ...editingBooking,
-                      email: e.target.value,
-                    })
-                  }
+                  onChange={(e) => setEditingBooking({ ...editingBooking, email: e.target.value })}
                   className="w-full p-2 mb-2 border rounded"
                 />
                 <input
                   type="text"
                   value={editingBooking.service}
-                  onChange={(e) =>
-                    setEditingBooking({
-                      ...editingBooking,
-                      service: e.target.value,
-                    })
-                  }
+                  onChange={(e) => setEditingBooking({ ...editingBooking, service: e.target.value })}
                   className="w-full p-2 mb-2 border rounded"
                 />
-                <button
-                  onClick={handleUpdateBooking}
-                  className="bg-[#17acdd] text-white px-4 py-2 rounded-lg mr-2"
-                >
-                  Save
-                </button>
-                <button
-                  onClick={() => setEditingBooking(null)}
-                  className="bg-gray-400 text-white px-4 py-2 rounded-lg"
-                >
-                  Cancel
-                </button>
+                <button onClick={handleUpdateBooking} className="bg-[#17acdd] text-white px-4 py-2 rounded-lg mr-2">Save</button>
+                <button onClick={() => setEditingBooking(null)} className="bg-gray-400 text-white px-4 py-2 rounded-lg">Cancel</button>
               </div>
             )}
           </section>
@@ -262,9 +193,7 @@ const AdminDashboard: React.FC = () => {
         {/* Subscribers */}
         {activeTab === "subscribers" && (
           <section className="bg-white p-6 rounded-xl shadow-md">
-            <h2 className="text-xl font-semibold text-[#17acdd] mb-4">
-              Subscribers
-            </h2>
+            <h2 className="text-xl font-semibold text-[#17acdd] mb-4">Subscribers</h2>
             <table className="w-full border-collapse border text-sm">
               <thead className="bg-gray-100">
                 <tr>
@@ -279,12 +208,7 @@ const AdminDashboard: React.FC = () => {
                     <td className="border px-4 py-2">{s.name || "N/A"}</td>
                     <td className="border px-4 py-2">{s.email}</td>
                     <td className="border px-4 py-2">
-                      <button
-                        onClick={() => handleDeleteSubscriber(s._id)}
-                        className="text-red-600 hover:underline"
-                      >
-                        Delete
-                      </button>
+                      <button onClick={() => handleDelete("/olatinn/api/subscribers", s._id, setSubscribers)} className="text-red-600 hover:underline">Delete</button>
                     </td>
                   </tr>
                 ))}
@@ -296,9 +220,7 @@ const AdminDashboard: React.FC = () => {
         {/* Partners */}
         {activeTab === "partners" && (
           <section className="bg-white p-6 rounded-xl shadow-md">
-            <h2 className="text-xl font-semibold text-[#17acdd] mb-4">
-              Partners
-            </h2>
+            <h2 className="text-xl font-semibold text-[#17acdd] mb-4">Partners</h2>
             <table className="w-full border-collapse border text-sm">
               <thead className="bg-gray-100">
                 <tr>
@@ -313,12 +235,7 @@ const AdminDashboard: React.FC = () => {
                     <td className="border px-4 py-2">{p.company}</td>
                     <td className="border px-4 py-2">{p.email}</td>
                     <td className="border px-4 py-2">
-                      <button
-                        onClick={() => handleDeletePartner(p._id)}
-                        className="text-red-600 hover:underline"
-                      >
-                        Delete
-                      </button>
+                      <button onClick={() => handleDelete("/olatinn/api/partners", p._id, setPartners)} className="text-red-600 hover:underline">Delete</button>
                     </td>
                   </tr>
                 ))}
@@ -330,9 +247,7 @@ const AdminDashboard: React.FC = () => {
         {/* Admin Users */}
         {activeTab === "admins" && (
           <section className="bg-white p-6 rounded-xl shadow-md">
-            <h2 className="text-xl font-semibold text-[#17acdd] mb-4">
-              Admin List
-            </h2>
+            <h2 className="text-xl font-semibold text-[#17acdd] mb-4">Admin List</h2>
             <table className="w-full border-collapse border text-sm">
               <thead className="bg-gray-100">
                 <tr>
@@ -352,7 +267,6 @@ const AdminDashboard: React.FC = () => {
           </section>
         )}
       </main>
-      
     </div>
   );
 };

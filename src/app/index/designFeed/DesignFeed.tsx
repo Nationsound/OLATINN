@@ -3,10 +3,11 @@
 import React, { useState, useEffect, ChangeEvent } from "react";
 import { FaHeart, FaCommentAlt, FaShareAlt, FaEdit, FaTrash } from "react-icons/fa";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 
 const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
-// Utility to convert string to consistent color
+// Utility to convert string to color
 const stringToColor = (str: string) => {
   if (!str) return "#6B7280";
   let hash = 0;
@@ -15,8 +16,14 @@ const stringToColor = (str: string) => {
   return "#" + "00000".substring(0, 6 - c.length) + c;
 };
 
-// Decode JWT to extract user ID
-const parseJwt = (token: string) => {
+// JWT payload type
+interface JwtPayload {
+  id?: string;
+  [key: string]: any;
+}
+
+// Decode JWT
+const parseJwt = (token: string): JwtPayload | null => {
   try {
     const base64Url = token.split(".")[1];
     const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
@@ -58,7 +65,7 @@ interface Design {
   likes?: number;
 }
 
-// Helper to get display name safely
+// Helper to get user display name
 const getUserName = (user?: User) => user?.fullName || user?.firstName || user?.name || "User";
 
 // Avatar component
@@ -95,6 +102,7 @@ const DesignFeed: React.FC = () => {
   const [replyInputs, setReplyInputs] = useState<Record<string, string>>({});
   const [currentUserId, setCurrentUserId] = useState<string>("");
 
+  // Fetch current user and designs
   useEffect(() => {
     const token = localStorage.getItem("olatinnToken");
     if (token) {
@@ -116,6 +124,7 @@ const DesignFeed: React.FC = () => {
     fetchDesigns();
   }, []);
 
+  // Fetch comments for a design
   const fetchComments = async (designId: string) => {
     try {
       const res = await fetch(`${baseUrl}/olatinn/api/designComments/${designId}`);
@@ -127,9 +136,14 @@ const DesignFeed: React.FC = () => {
     }
   };
 
+  // Handle interactions (like, comment, share)
   const handleInteraction = async (designId: string, action: "like" | "comment" | "share") => {
     if (!currentUserId) return router.push("/signup");
-    if (action === "comment") return setActiveCommentBox(activeCommentBox === designId ? null : designId);
+
+    if (action === "comment") {
+      setActiveCommentBox(activeCommentBox === designId ? null : designId);
+    }
+
     if (action === "like") {
       try {
         const token = localStorage.getItem("olatinnToken");
@@ -144,13 +158,14 @@ const DesignFeed: React.FC = () => {
         console.error(err);
       }
     }
+
     if (action === "share") {
       navigator.clipboard.writeText(`${window.location.origin}/design/${designId}`);
       alert("Design link copied!");
     }
   };
 
-  // Recursive Comment Component
+  // Recursive CommentItem
   const CommentItem: React.FC<{ comment: CommentType; designId: string }> = ({ comment, designId }) => {
     const handleReply = () => setActiveReplyBox(activeReplyBox === comment._id ? null : comment._id);
 
@@ -162,16 +177,20 @@ const DesignFeed: React.FC = () => {
             <p className="font-medium text-gray-800">{getUserName(comment.user)}</p>
             <p className="text-gray-700">{comment.text}</p>
             <div className="flex gap-3 text-sm mt-2">
+              {/* Like comment */}
               <button
                 className="flex items-center gap-1 text-red-500"
                 onClick={async () => {
                   if (!currentUserId) return router.push("/signup");
                   try {
                     const token = localStorage.getItem("olatinnToken");
-                    const res = await fetch(`${baseUrl}/olatinn/api/designComments/like/${comment._id}`, {
-                      method: "PATCH",
-                      headers: { Authorization: `Bearer ${token}` },
-                    });
+                    const res = await fetch(
+                      `${baseUrl}/olatinn/api/designComments/like/${comment._id}`,
+                      {
+                        method: "PATCH",
+                        headers: { Authorization: `Bearer ${token}` },
+                      }
+                    );
                     if (!res.ok) throw new Error("Failed to like comment");
                     const updated: CommentType = await res.json();
                     const updateComments = (comments: CommentType[]): CommentType[] =>
@@ -180,7 +199,10 @@ const DesignFeed: React.FC = () => {
                           ? updated
                           : { ...c, replies: c.replies ? updateComments(c.replies) : [] }
                       );
-                    setComments((prev) => ({ ...prev, [designId]: updateComments(prev[designId]) }));
+                    setComments((prev) => ({
+                      ...prev,
+                      [designId]: updateComments(prev[designId]),
+                    }));
                   } catch (err) {
                     console.error(err);
                   }
@@ -188,9 +210,12 @@ const DesignFeed: React.FC = () => {
               >
                 <FaHeart /> {comment.likes || 0}
               </button>
+
               <button className="text-green-600" onClick={handleReply}>
                 Reply
               </button>
+
+              {/* Edit/Delete own comment */}
               {comment.user._id === currentUserId && (
                 <>
                   <button
@@ -242,7 +267,7 @@ const DesignFeed: React.FC = () => {
               )}
             </div>
 
-            {/* Reply Input */}
+            {/* Reply box */}
             {activeReplyBox === comment._id && (
               <div className="ml-12 mt-2">
                 <textarea
@@ -280,7 +305,7 @@ const DesignFeed: React.FC = () => {
               </div>
             )}
 
-            {/* Nested Replies */}
+            {/* Nested replies */}
             {comment.replies?.map((r) => (
               <div key={r._id} className="ml-12">
                 <CommentItem comment={r} designId={designId} />
@@ -296,9 +321,9 @@ const DesignFeed: React.FC = () => {
     <div className="max-w-5xl mx-auto space-y-12 p-4">
       {designs.map((design) => (
         <div key={design._id} className="bg-white shadow-lg rounded-2xl overflow-hidden">
-          <div className="w-full h-[500px] md:h-[600px] bg-gray-200">
+          <div className="w-full h-[500px] md:h-[600px] relative bg-gray-200">
             {design.image ? (
-              <img src={design.image} alt={design.title} className="w-full h-full object-cover" />
+              <Image src={design.image} alt={design.title} fill className="object-cover" />
             ) : (
               <div className="flex items-center justify-center h-full text-gray-400">No Image</div>
             )}
@@ -308,33 +333,51 @@ const DesignFeed: React.FC = () => {
             <h2 className="text-4xl md:text-5xl font-extrabold text-gray-900">{design.title}</h2>
             <p className="mt-4 text-lg md:text-xl text-gray-700">{design.description}</p>
             {design.link && (
-              <a href={design.link} target="_blank" rel="noopener noreferrer" className="inline-block mt-3 text-blue-600">
+              <a
+                href={design.link}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-block mt-3 text-blue-600"
+              >
                 Visit Link
               </a>
             )}
+
             <div className="flex gap-6 mt-6">
-              <button onClick={() => handleInteraction(design._id, "like")} className="flex items-center gap-2 text-gray-600">
+              <button
+                onClick={() => handleInteraction(design._id, "like")}
+                className="flex items-center gap-2 text-gray-600"
+              >
                 <FaHeart /> {design.likes || 0}
               </button>
-              <button onClick={() => handleInteraction(design._id, "comment")} className="flex items-center gap-2 text-gray-600">
+              <button
+                onClick={() => handleInteraction(design._id, "comment")}
+                className="flex items-center gap-2 text-gray-600"
+              >
                 <FaCommentAlt /> {comments[design._id]?.length || 0}
               </button>
-              <button onClick={() => handleInteraction(design._id, "share")} className="flex items-center gap-2 text-gray-600">
+              <button
+                onClick={() => handleInteraction(design._id, "share")}
+                className="flex items-center gap-2 text-gray-600"
+              >
                 <FaShareAlt />
               </button>
             </div>
 
+            {/* Comment section */}
             {activeCommentBox === design._id && (
               <div className="mt-6 border-t pt-4">
                 {comments[design._id]?.map((c) => (
                   <CommentItem key={c._id} comment={c} designId={design._id} />
                 ))}
 
-                {/* New comment */}
+                {/* New comment input */}
                 <div className="mt-4">
                   <textarea
                     value={commentInputs[design._id] || ""}
-                    onChange={(e) => setCommentInputs((prev) => ({ ...prev, [design._id]: e.target.value }))}
+                    onChange={(e: ChangeEvent<HTMLTextAreaElement>) =>
+                      setCommentInputs((prev) => ({ ...prev, [design._id]: e.target.value }))
+                    }
                     placeholder="Write a comment..."
                     className="w-full border rounded-lg p-2"
                   />

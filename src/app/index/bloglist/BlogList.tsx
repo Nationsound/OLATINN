@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { FaArrowLeft, FaArrowRight } from "react-icons/fa";
 import Image from "next/image";
-import { NextSeo } from "next-seo"; // ✅ import next-seo
-import { useBlog } from "@/app/context/BlogContext";
+import { NextSeo } from "next-seo";
+import { useBlog, Blog } from "@/app/context/BlogContext";
 import { dummyBlogs } from "../dummy/DummyData";
 
 const API_BASE = "http://localhost:5000/olatinn/api/blogs";
@@ -19,7 +19,6 @@ const BlogList = () => {
   const [page, setPage] = useState(1);
   const blogsPerPage = 2;
 
-  // Fetch backend blogs and merge with dummy blogs
   useEffect(() => {
     const fetchBlogs = async () => {
       setLoading(true);
@@ -28,8 +27,9 @@ const BlogList = () => {
         if (!res.ok) throw new Error("Failed to fetch blogs");
         const data = await res.json();
 
-        const normalized = data.map((b: any) => ({
-          id: b._id || b.id,
+        // Map API data to context Blog type
+        const normalized: Blog[] = data.map((b: any) => ({
+          id: Number(b._id || b.id), // ensure number type
           slug: b.slug,
           title: b.title,
           excerpt: b.excerpt,
@@ -42,11 +42,18 @@ const BlogList = () => {
           readingTime: b.readingTime,
         }));
 
-        const merged = [...dummyBlogs, ...normalized];
+        // Ensure dummy blogs match context Blog type
+        const merged: Blog[] = [...dummyBlogs.map(d => ({
+          ...d,
+          id: Number(d.id), 
+        })), ...normalized];
+
         setAllBlogs(merged);
       } catch (err) {
         console.error("Error fetching blogs:", err);
-        setAllBlogs(dummyBlogs);
+
+        // fallback to dummyBlogs, ensure type
+        setAllBlogs(dummyBlogs.map(d => ({ ...d, id: Number(d.id) })));
       } finally {
         setLoading(false);
       }
@@ -65,7 +72,6 @@ const BlogList = () => {
 
   return (
     <>
-      {/* ✅ SEO Meta */}
       <NextSeo
         title="Dive Into The Amazing World Of Technology | OLatinn"
         description="Explore insightful blogs on technology, innovation, and digital transformation. Stay updated with OLatinn’s latest articles."
@@ -103,7 +109,6 @@ const BlogList = () => {
             Dive Into The Amazing World Of Technology
           </motion.h1>
 
-          {/* Blog List */}
           <div className="flex flex-col gap-12 items-center">
             {currentBlogs.map((blog, idx) => (
               <motion.article
@@ -117,7 +122,6 @@ const BlogList = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.08 * idx, duration: 0.45 }}
               >
-                {/* Image */}
                 <div className="w-full h-[350px] md:h-[400px] lg:h-[450px] relative">
                   <Image
                     src={blog.coverImage || blog.imageUrl || "/images/placeholder.jpg"}
@@ -127,7 +131,6 @@ const BlogList = () => {
                   />
                 </div>
 
-                {/* Content */}
                 <div className="p-8 flex flex-col justify-between">
                   <h2 className="text-2xl font-semibold mb-3 text-[#5adfe8]">
                     {blog.title || "Untitled"}
@@ -164,7 +167,6 @@ const BlogList = () => {
             ))}
           </div>
 
-          {/* Pagination */}
           <div className="flex items-center justify-center gap-4 mt-10">
             <button
               onClick={() => setPage((p) => Math.max(1, p - 1))}

@@ -1,18 +1,20 @@
 "use client";
-import React, { useState, useEffect } from "react";
 
-interface FormData {
+import React, { useState, useEffect } from "react";
+import Image from "next/image";
+
+interface FormDataType {
   _id?: string;
   title: string;
   description: string;
   link?: string;
   date: string;
   slug: string;
-  image?: File | null; // For file input
+  image?: File | string | null; // File for upload, string for existing URL
 }
 
 const DesignTemplate: React.FC = () => {
-  const [form, setForm] = useState<FormData>({
+  const [form, setForm] = useState<FormDataType>({
     title: "",
     description: "",
     link: "",
@@ -20,7 +22,8 @@ const DesignTemplate: React.FC = () => {
     slug: "",
     image: null,
   });
-  const [designs, setDesigns] = useState<any[]>([]);
+
+  const [designs, setDesigns] = useState<FormDataType[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
 
   // Fetch all designs
@@ -28,7 +31,7 @@ const DesignTemplate: React.FC = () => {
     try {
       const res = await fetch("http://localhost:5000/olatinn/api/designs");
       if (!res.ok) throw new Error("Failed to fetch designs");
-      const data = await res.json();
+      const data: FormDataType[] = await res.json();
       setDesigns(data);
     } catch (error) {
       console.error("Error fetching designs:", error);
@@ -62,14 +65,17 @@ const DesignTemplate: React.FC = () => {
       if (form.link) formData.append("link", form.link);
       formData.append("date", form.date);
       formData.append("slug", form.slug);
-      if (form.image) formData.append("image", form.image);
+      if (form.image instanceof File) formData.append("image", form.image);
 
       if (editingId) {
         // Update
-        const res = await fetch(`http://localhost:5000/olatinn/api/designs/${editingId}`, {
-          method: "PUT",
-          body: formData,
-        });
+        const res = await fetch(
+          `http://localhost:5000/olatinn/api/designs/${editingId}`,
+          {
+            method: "PUT",
+            body: formData,
+          }
+        );
         if (!res.ok) throw new Error("Failed to update design");
       } else {
         // Create
@@ -99,7 +105,7 @@ const DesignTemplate: React.FC = () => {
   };
 
   // Handle edit
-  const handleEdit = (design: any) => {
+  const handleEdit = (design: FormDataType) => {
     setForm({
       _id: design._id,
       title: design.title,
@@ -115,7 +121,10 @@ const DesignTemplate: React.FC = () => {
   // Handle delete
   const handleDelete = async (id: string) => {
     try {
-      const res = await fetch(`http://localhost:5000/olatinn/api/designs/${id}`, { method: "DELETE" });
+      const res = await fetch(
+        `http://localhost:5000/olatinn/api/designs/${id}`,
+        { method: "DELETE" }
+      );
       if (!res.ok) throw new Error("Failed to delete design");
       await fetchDesigns();
     } catch (error) {
@@ -199,10 +208,12 @@ const DesignTemplate: React.FC = () => {
             >
               <h3 className="text-xl font-semibold">{design.title}</h3>
               <p>{design.description}</p>
-              {design.imageUrl && (
-                <img
-                  src={design.imageUrl}
+              {design.image && typeof design.image === "string" && (
+                <Image
+                  src={design.image}
                   alt={design.title}
+                  width={800}
+                  height={400}
                   className="w-full h-64 object-cover rounded mt-2"
                 />
               )}
@@ -210,6 +221,7 @@ const DesignTemplate: React.FC = () => {
                 <a
                   href={design.link}
                   target="_blank"
+                  rel="noopener noreferrer"
                   className="text-blue-600 underline"
                 >
                   Visit Link
@@ -224,7 +236,7 @@ const DesignTemplate: React.FC = () => {
                   Edit
                 </button>
                 <button
-                  onClick={() => handleDelete(design._id)}
+                  onClick={() => handleDelete(design._id!)}
                   className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600"
                 >
                   Delete
