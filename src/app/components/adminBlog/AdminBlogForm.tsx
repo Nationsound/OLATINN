@@ -3,9 +3,20 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import Image from "next/image";
 
+interface Blog {
+  _id: string;
+  title: string;
+  slug: string;
+  category: string;
+  content: string;
+  author: string;
+  imageUrl?: string;
+}
+
 const API_BASE = "http://localhost:5000/olatinn/api/blogs"; 
 
 const AdminBlogForm = () => {
+  
   const [formData, setFormData] = useState({
     title: "",
     slug: "",
@@ -15,7 +26,7 @@ const AdminBlogForm = () => {
   });
   const [image, setImage] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
-  const [blogs, setBlogs] = useState<any[]>([]);
+  const [blogs, setBlogs] = useState<Blog[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
 
   // fetch blogs
@@ -113,7 +124,7 @@ const AdminBlogForm = () => {
 
   // edit blog
   
-const handleEdit = (blog: any) => {
+const handleEdit = (blog: Blog) => {
   setEditingId(blog._id);
   setFormData({
     title: blog.title,

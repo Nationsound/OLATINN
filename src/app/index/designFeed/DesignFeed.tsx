@@ -1,13 +1,13 @@
 "use client";
 
-import React, { useState, useEffect, ChangeEvent } from "react";
+import React, { useState, useEffect, ChangeEvent, useCallback } from "react";
 import { FaHeart, FaCommentAlt, FaShareAlt, FaEdit, FaTrash } from "react-icons/fa";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 
 const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
-// Utility to convert string to color
+// Utility: convert string to color
 const stringToColor = (str: string) => {
   if (!str) return "#6B7280";
   let hash = 0;
@@ -65,10 +65,23 @@ interface Design {
   likes?: number;
 }
 
-// Helper to get user display name
+// Helper: get display name
 const getUserName = (user?: User) => user?.fullName || user?.firstName || user?.name || "User";
 
-// Avatar component
+// Helper: authorized fetch
+const authorizedFetch = async (url: string, method: string = "GET", body?: any) => {
+  const token = localStorage.getItem("olatinnToken");
+  return fetch(url, {
+    method,
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+};
+
+// Avatar Component
 const UserAvatar: React.FC<{ user?: User; size?: number; onClick?: () => void }> = ({
   user,
   size = 40,
@@ -91,14 +104,22 @@ const UserAvatar: React.FC<{ user?: User; size?: number; onClick?: () => void }>
   );
 };
 
+// Recursive comment update helper
+const updateCommentTree = (comments: CommentType[], updated: CommentType): CommentType[] =>
+  comments.map((c) =>
+    c._id === updated._id
+      ? updated
+      : { ...c, replies: c.replies ? updateCommentTree(c.replies, updated) : [] }
+  );
+
 const DesignFeed: React.FC = () => {
   const router = useRouter();
 
   const [designs, setDesigns] = useState<Design[]>([]);
   const [comments, setComments] = useState<Record<string, CommentType[]>>({});
-  const [activeCommentBox, setActiveCommentBox] = useState<string | null>(null);
+  const [activeCommentBox, setActiveCommentBox] = useState<Design["_id"] | null>(null);
   const [commentInputs, setCommentInputs] = useState<Record<string, string>>({});
-  const [activeReplyBox, setActiveReplyBox] = useState<string | null>(null);
+  const [activeReplyBox, setActiveReplyBox] = useState<CommentType["_id"] | null>(null);
   const [replyInputs, setReplyInputs] = useState<Record<string, string>>({});
   const [currentUserId, setCurrentUserId] = useState<string>("");
 
@@ -116,27 +137,29 @@ const DesignFeed: React.FC = () => {
         if (!res.ok) throw new Error("Failed to fetch designs");
         const data: Design[] = await res.json();
         setDesigns(data);
+
+        // Fetch comments for each design
         data.forEach((d) => fetchComments(d._id));
-      } catch (error) {
-        console.error("Error fetching designs:", error);
+      } catch (err) {
+        console.error(err);
       }
     };
     fetchDesigns();
   }, []);
 
-  // Fetch comments for a design
-  const fetchComments = async (designId: string) => {
+  // Fetch comments
+  const fetchComments = useCallback(async (designId: string) => {
     try {
       const res = await fetch(`${baseUrl}/olatinn/api/designComments/${designId}`);
       if (!res.ok) throw new Error("Failed to fetch comments");
       const data: CommentType[] = await res.json();
       setComments((prev) => ({ ...prev, [designId]: data }));
-    } catch (error) {
-      console.error("Error fetching comments:", error);
+    } catch (err) {
+      console.error(err);
     }
-  };
+  }, []);
 
-  // Handle interactions (like, comment, share)
+  // Handle interactions
   const handleInteraction = async (designId: string, action: "like" | "comment" | "share") => {
     if (!currentUserId) return router.push("/signup");
 
@@ -146,14 +169,10 @@ const DesignFeed: React.FC = () => {
 
     if (action === "like") {
       try {
-        const token = localStorage.getItem("olatinnToken");
-        const res = await fetch(`${baseUrl}/olatinn/api/designs/like/${designId}`, {
-          method: "PATCH",
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const res = await authorizedFetch(`${baseUrl}/olatinn/api/designs/like/${designId}`, "PATCH");
         if (!res.ok) throw new Error("Failed to like design");
-        const updatedDesign: Design = await res.json();
-        setDesigns((prev) => prev.map((d) => (d._id === designId ? updatedDesign : d)));
+        const updated: Design = await res.json();
+        setDesigns((prev) => prev.map((d) => (d._id === designId ? updated : d)));
       } catch (err) {
         console.error(err);
       }
@@ -165,7 +184,7 @@ const DesignFeed: React.FC = () => {
     }
   };
 
-  // Recursive CommentItem
+  // Comment item recursive component
   const CommentItem: React.FC<{ comment: CommentType; designId: string }> = ({ comment, designId }) => {
     const handleReply = () => setActiveReplyBox(activeReplyBox === comment._id ? null : comment._id);
 
@@ -176,6 +195,7 @@ const DesignFeed: React.FC = () => {
           <div className="flex-1">
             <p className="font-medium text-gray-800">{getUserName(comment.user)}</p>
             <p className="text-gray-700">{comment.text}</p>
+
             <div className="flex gap-3 text-sm mt-2">
               {/* Like comment */}
               <button
@@ -183,25 +203,14 @@ const DesignFeed: React.FC = () => {
                 onClick={async () => {
                   if (!currentUserId) return router.push("/signup");
                   try {
-                    const token = localStorage.getItem("olatinnToken");
-                    const res = await fetch(
+                    const res = await authorizedFetch(
                       `${baseUrl}/olatinn/api/designComments/like/${comment._id}`,
-                      {
-                        method: "PATCH",
-                        headers: { Authorization: `Bearer ${token}` },
-                      }
+                      "PATCH"
                     );
-                    if (!res.ok) throw new Error("Failed to like comment");
                     const updated: CommentType = await res.json();
-                    const updateComments = (comments: CommentType[]): CommentType[] =>
-                      comments.map((c) =>
-                        c._id === updated._id
-                          ? updated
-                          : { ...c, replies: c.replies ? updateComments(c.replies) : [] }
-                      );
                     setComments((prev) => ({
                       ...prev,
-                      [designId]: updateComments(prev[designId]),
+                      [designId]: updateCommentTree(prev[designId], updated),
                     }));
                   } catch (err) {
                     console.error(err);
@@ -220,45 +229,34 @@ const DesignFeed: React.FC = () => {
                 <>
                   <button
                     className="text-blue-500 flex items-center gap-1"
-                    onClick={() => {
+                    onClick={async () => {
                       const newText = prompt("Edit comment", comment.text);
                       if (!newText) return;
-                      fetch(`${baseUrl}/olatinn/api/designComments/${comment._id}`, {
-                        method: "PUT",
-                        headers: {
-                          "Content-Type": "application/json",
-                          Authorization: `Bearer ${localStorage.getItem("olatinnToken")}`,
-                        },
-                        body: JSON.stringify({ text: newText }),
-                      })
-                        .then((res) => res.json())
-                        .then((updated: CommentType) => {
-                          const updateComments = (comments: CommentType[]): CommentType[] =>
-                            comments.map((c) =>
-                              c._id === updated._id
-                                ? updated
-                                : { ...c, replies: c.replies ? updateComments(c.replies) : [] }
-                            );
-                          setComments((prev) => ({ ...prev, [designId]: updateComments(prev[designId]) }));
-                        });
+                      const res = await authorizedFetch(
+                        `${baseUrl}/olatinn/api/designComments/${comment._id}`,
+                        "PUT",
+                        { text: newText }
+                      );
+                      const updated: CommentType = await res.json();
+                      setComments((prev) => ({
+                        ...prev,
+                        [designId]: updateCommentTree(prev[designId], updated),
+                      }));
                     }}
                   >
                     <FaEdit /> Edit
                   </button>
+
                   <button
                     className="text-red-700 flex items-center gap-1"
-                    onClick={() => {
+                    onClick={async () => {
                       if (!confirm("Delete this comment?")) return;
-                      fetch(`${baseUrl}/olatinn/api/designComments/${comment._id}`, {
-                        method: "DELETE",
-                        headers: { Authorization: `Bearer ${localStorage.getItem("olatinnToken")}` },
-                      }).then(() => {
-                        const deleteRecursively = (comments: CommentType[]): CommentType[] =>
-                          comments
-                            .filter((c) => c._id !== comment._id)
-                            .map((c) => ({ ...c, replies: c.replies ? deleteRecursively(c.replies) : [] }));
-                        setComments((prev) => ({ ...prev, [designId]: deleteRecursively(prev[designId]) }));
-                      });
+                      await authorizedFetch(`${baseUrl}/olatinn/api/designComments/${comment._id}`, "DELETE");
+                      const deleteRecursively = (comments: CommentType[]): CommentType[] =>
+                        comments
+                          .filter((c) => c._id !== comment._id)
+                          .map((c) => ({ ...c, replies: c.replies ? deleteRecursively(c.replies) : [] }));
+                      setComments((prev) => ({ ...prev, [designId]: deleteRecursively(prev[designId]) }));
                     }}
                   >
                     <FaTrash /> Delete
@@ -282,12 +280,11 @@ const DesignFeed: React.FC = () => {
                   className="bg-green-600 text-white px-3 py-1 rounded mt-1 hover:bg-green-700"
                   onClick={async () => {
                     if (!replyInputs[comment._id]?.trim()) return;
-                    const token = localStorage.getItem("olatinnToken");
-                    const res = await fetch(`${baseUrl}/olatinn/api/designComments/reply/${comment._id}`, {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-                      body: JSON.stringify({ text: replyInputs[comment._id] }),
-                    });
+                    const res = await authorizedFetch(
+                      `${baseUrl}/olatinn/api/designComments/reply/${comment._id}`,
+                      "POST",
+                      { text: replyInputs[comment._id] }
+                    );
                     const newReply: CommentType = await res.json();
                     const addReply = (comments: CommentType[]): CommentType[] =>
                       comments.map((c) =>
@@ -317,6 +314,11 @@ const DesignFeed: React.FC = () => {
     );
   };
 
+  // Comment input change handler
+  const handleCommentChange = (designId: string) => (e: ChangeEvent<HTMLTextAreaElement>) => {
+    setCommentInputs((prev) => ({ ...prev, [designId]: e.target.value }));
+  };
+
   return (
     <div className="max-w-5xl mx-auto space-y-12 p-4">
       {designs.map((design) => (
@@ -333,38 +335,23 @@ const DesignFeed: React.FC = () => {
             <h2 className="text-4xl md:text-5xl font-extrabold text-gray-900">{design.title}</h2>
             <p className="mt-4 text-lg md:text-xl text-gray-700">{design.description}</p>
             {design.link && (
-              <a
-                href={design.link}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-block mt-3 text-blue-600"
-              >
+              <a href={design.link} target="_blank" rel="noopener noreferrer" className="inline-block mt-3 text-blue-600">
                 Visit Link
               </a>
             )}
 
             <div className="flex gap-6 mt-6">
-              <button
-                onClick={() => handleInteraction(design._id, "like")}
-                className="flex items-center gap-2 text-gray-600"
-              >
+              <button onClick={() => handleInteraction(design._id, "like")} className="flex items-center gap-2 text-gray-600">
                 <FaHeart /> {design.likes || 0}
               </button>
-              <button
-                onClick={() => handleInteraction(design._id, "comment")}
-                className="flex items-center gap-2 text-gray-600"
-              >
+              <button onClick={() => handleInteraction(design._id, "comment")} className="flex items-center gap-2 text-gray-600">
                 <FaCommentAlt /> {comments[design._id]?.length || 0}
               </button>
-              <button
-                onClick={() => handleInteraction(design._id, "share")}
-                className="flex items-center gap-2 text-gray-600"
-              >
+              <button onClick={() => handleInteraction(design._id, "share")} className="flex items-center gap-2 text-gray-600">
                 <FaShareAlt />
               </button>
             </div>
 
-            {/* Comment section */}
             {activeCommentBox === design._id && (
               <div className="mt-6 border-t pt-4">
                 {comments[design._id]?.map((c) => (
@@ -375,29 +362,22 @@ const DesignFeed: React.FC = () => {
                 <div className="mt-4">
                   <textarea
                     value={commentInputs[design._id] || ""}
-                    onChange={(e: ChangeEvent<HTMLTextAreaElement>) =>
-                      setCommentInputs((prev) => ({ ...prev, [design._id]: e.target.value }))
-                    }
+                    onChange={handleCommentChange(design._id)}
                     placeholder="Write a comment..."
                     className="w-full border rounded-lg p-2"
                   />
                   <button
-                    onClick={() => {
+                    onClick={async () => {
                       if (!commentInputs[design._id]?.trim()) return;
-                      const token = localStorage.getItem("olatinnToken");
-                      fetch(`${baseUrl}/olatinn/api/designComments/${design._id}`, {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-                        body: JSON.stringify({ text: commentInputs[design._id] }),
-                      })
-                        .then((res) => res.json())
-                        .then((newComment: CommentType) => {
-                          setComments((prev) => ({
-                            ...prev,
-                            [design._id]: [newComment, ...(prev[design._id] || [])],
-                          }));
-                          setCommentInputs((prev) => ({ ...prev, [design._id]: "" }));
-                        });
+                      const res = await authorizedFetch(`${baseUrl}/olatinn/api/designComments/${design._id}`, "POST", {
+                        text: commentInputs[design._id],
+                      });
+                      const newComment: CommentType = await res.json();
+                      setComments((prev) => ({
+                        ...prev,
+                        [design._id]: [newComment, ...(prev[design._id] || [])],
+                      }));
+                      setCommentInputs((prev) => ({ ...prev, [design._id]: "" }));
                     }}
                     className="bg-[#000271] text-white px-4 py-2 rounded mt-2 hover:bg-[#17acdd]"
                   >

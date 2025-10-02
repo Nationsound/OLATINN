@@ -9,6 +9,20 @@ import { NextSeo } from "next-seo";
 import { useBlog, Blog } from "@/app/context/BlogContext";
 import { dummyBlogs } from "../dummy/DummyData";
 
+interface BlogApiResponse {
+  _id: string;
+  slug: string;
+  title: string;
+  excerpt?: string;
+  content: string;
+  coverImage?: string;
+  imageUrl?: string;
+  author?: string;
+  date?: string;
+  createdAt?: string;
+  readingTime?: number;
+}
+
 const API_BASE = "http://localhost:5000/olatinn/api/blogs";
 
 const BlogList = () => {
@@ -28,19 +42,19 @@ const BlogList = () => {
         const data = await res.json();
 
         // Map API data to context Blog type
-        const normalized: Blog[] = data.map((b: any) => ({
-          id: Number(b._id || b.id), // ensure number type
-          slug: b.slug,
-          title: b.title,
-          excerpt: b.excerpt,
-          content: b.content,
-          coverImage: b.coverImage,
-          imageUrl: b.imageUrl,
-          author: b.author,
-          date: b.date,
-          createdAt: b.createdAt,
-          readingTime: b.readingTime,
-        }));
+        const normalized: Blog[] = data.map((b: BlogApiResponse) => ({
+  id: Number(b._id), // or b._id as string if your context uses string IDs
+  slug: b.slug,
+  title: b.title,
+  excerpt: b.excerpt,
+  content: b.content,
+  coverImage: b.coverImage,
+  imageUrl: b.imageUrl,
+  author: b.author,
+  date: b.date,
+  createdAt: b.createdAt,
+  readingTime: b.readingTime,
+}));
 
         // Ensure dummy blogs match context Blog type
         const merged: Blog[] = [...dummyBlogs.map(d => ({

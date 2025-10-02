@@ -1,6 +1,6 @@
 "use client";
 import AdminHeader from "@/app/components/adminHeader/AdminHeader";
-import React, { useState, useEffect } from "react";
+import React, { useState,  useCallback, useEffect } from "react";
 
 interface Booking {
   _id: string;
@@ -41,7 +41,8 @@ const AdminDashboard: React.FC = () => {
   const apiBase = process.env.NEXT_PUBLIC_API_URL;
 
   // ✅ Generic typed fetcher
-  const fetchData = async <T,>(endpoint: string, setter: React.Dispatch<React.SetStateAction<T>>) => {
+  const fetchData = useCallback(
+  async <T,>(endpoint: string, setter: React.Dispatch<React.SetStateAction<T>>) => {
     try {
       setLoading(true);
       const token = localStorage.getItem("adminToken");
@@ -61,19 +62,28 @@ const AdminDashboard: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  },
+  [apiBase] // only changes if apiBase changes
+);
 
   // ✅ CRUD actions
-  const handleDelete = async (endpoint: string, id: string, setter: React.Dispatch<React.SetStateAction<any[]>>) => {
-    if (!confirm("Are you sure you want to delete this item?")) return;
-    try {
-      const res = await fetch(`${apiBase}${endpoint}/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Failed to delete");
-      setter((prev) => prev.filter((item) => item._id !== id));
-    } catch (err) {
-      console.error("❌ Delete error:", err);
-    }
-  };
+ const handleDelete = async <T extends { _id: string }>(
+  endpoint: string,
+  id: string,
+  setter: React.Dispatch<React.SetStateAction<T[]>>
+) => {
+  if (!confirm("Are you sure you want to delete this item?")) return;
+  try {
+    const res = await fetch(`${apiBase}${endpoint}/${id}`, { method: "DELETE" });
+    if (!res.ok) throw new Error("Failed to delete");
+
+    // Update state
+    setter((prev) => prev.filter((item) => item._id !== id));
+  } catch (err) {
+    console.error("❌ Delete error:", err);
+  }
+};
+
 
   const handleUpdateBooking = async () => {
     if (!editingBooking) return;
@@ -96,14 +106,11 @@ const AdminDashboard: React.FC = () => {
 
   // ✅ Fetch per tab change
   useEffect(() => {
-    const loadData = () => {
-      if (activeTab === "bookings") fetchData<Booking[]>("/olatinn/api/bookings", setBookings);
-      if (activeTab === "subscribers") fetchData<Subscriber[]>("/olatinn/api/subscribers", setSubscribers);
-      if (activeTab === "partners") fetchData<Partner[]>("/olatinn/api/partners", setPartners);
-      if (activeTab === "admins") fetchData<AdminUser[]>("/olatinn/api/admin/list", setAdmins);
-    };
-    loadData();
-  }, [activeTab]);
+  if (activeTab === "bookings") fetchData<Booking[]>("/olatinn/api/bookings", setBookings);
+  if (activeTab === "subscribers") fetchData<Subscriber[]>("/olatinn/api/subscribers", setSubscribers);
+  if (activeTab === "partners") fetchData<Partner[]>("/olatinn/api/partners", setPartners);
+  if (activeTab === "admins") fetchData<AdminUser[]>("/olatinn/api/admin/list", setAdmins);
+}, [activeTab, fetchData]);
 
   return (
     <div className="min-h-screen flex flex-col bg-white mt-18">
