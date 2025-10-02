@@ -19,7 +19,7 @@ const stringToColor = (str: string) => {
 // JWT payload type
 interface JwtPayload {
   id?: string;
-  [key: string]: any;
+  [key: string]: string | number | boolean | undefined;
 }
 
 // Decode JWT
@@ -69,9 +69,13 @@ interface Design {
 const getUserName = (user?: User) => user?.fullName || user?.firstName || user?.name || "User";
 
 // Helper: authorized fetch
-const authorizedFetch = async (url: string, method: string = "GET", body?: any) => {
+const authorizedFetch = async <T = unknown>(
+  url: string,
+  method: "GET" | "POST" | "PATCH" | "PUT" | "DELETE" = "GET",
+  body?: Record<string, unknown>
+): Promise<T> => {
   const token = localStorage.getItem("olatinnToken");
-  return fetch(url, {
+  const res = await fetch(url, {
     method,
     headers: {
       "Content-Type": "application/json",
@@ -79,6 +83,8 @@ const authorizedFetch = async (url: string, method: string = "GET", body?: any) 
     },
     body: body ? JSON.stringify(body) : undefined,
   });
+
+  return res.json() as Promise<T>;
 };
 
 // Avatar Component
@@ -123,6 +129,16 @@ const DesignFeed: React.FC = () => {
   const [replyInputs, setReplyInputs] = useState<Record<string, string>>({});
   const [currentUserId, setCurrentUserId] = useState<string>("");
 
+  // Fetch comments
+  const fetchComments = useCallback(async (designId: string) => {
+    try {
+      const data = await authorizedFetch<CommentType[]>(`${baseUrl}/olatinn/api/designComments/${designId}`);
+      setComments((prev) => ({ ...prev, [designId]: data }));
+    } catch (err) {
+      console.error(err);
+    }
+  }, []);
+
   // Fetch current user and designs
   useEffect(() => {
     const token = localStorage.getItem("olatinnToken");
@@ -133,9 +149,7 @@ const DesignFeed: React.FC = () => {
 
     const fetchDesigns = async () => {
       try {
-        const res = await fetch(`${baseUrl}/olatinn/api/designs`);
-        if (!res.ok) throw new Error("Failed to fetch designs");
-        const data: Design[] = await res.json();
+        const data = await authorizedFetch<Design[]>(`${baseUrl}/olatinn/api/designs`);
         setDesigns(data);
 
         // Fetch comments for each design
@@ -144,20 +158,9 @@ const DesignFeed: React.FC = () => {
         console.error(err);
       }
     };
-    fetchDesigns();
-  }, []);
 
-  // Fetch comments
-  const fetchComments = useCallback(async (designId: string) => {
-    try {
-      const res = await fetch(`${baseUrl}/olatinn/api/designComments/${designId}`);
-      if (!res.ok) throw new Error("Failed to fetch comments");
-      const data: CommentType[] = await res.json();
-      setComments((prev) => ({ ...prev, [designId]: data }));
-    } catch (err) {
-      console.error(err);
-    }
-  }, []);
+    fetchDesigns();
+  }, [fetchComments]);
 
   // Handle interactions
   const handleInteraction = async (designId: string, action: "like" | "comment" | "share") => {
@@ -169,9 +172,7 @@ const DesignFeed: React.FC = () => {
 
     if (action === "like") {
       try {
-        const res = await authorizedFetch(`${baseUrl}/olatinn/api/designs/like/${designId}`, "PATCH");
-        if (!res.ok) throw new Error("Failed to like design");
-        const updated: Design = await res.json();
+        const updated = await authorizedFetch<Design>(`${baseUrl}/olatinn/api/designs/like/${designId}`, "PATCH");
         setDesigns((prev) => prev.map((d) => (d._id === designId ? updated : d)));
       } catch (err) {
         console.error(err);
@@ -203,11 +204,10 @@ const DesignFeed: React.FC = () => {
                 onClick={async () => {
                   if (!currentUserId) return router.push("/signup");
                   try {
-                    const res = await authorizedFetch(
+                    const updated = await authorizedFetch<CommentType>(
                       `${baseUrl}/olatinn/api/designComments/like/${comment._id}`,
                       "PATCH"
                     );
-                    const updated: CommentType = await res.json();
                     setComments((prev) => ({
                       ...prev,
                       [designId]: updateCommentTree(prev[designId], updated),
@@ -232,12 +232,11 @@ const DesignFeed: React.FC = () => {
                     onClick={async () => {
                       const newText = prompt("Edit comment", comment.text);
                       if (!newText) return;
-                      const res = await authorizedFetch(
+                      const updated = await authorizedFetch<CommentType>(
                         `${baseUrl}/olatinn/api/designComments/${comment._id}`,
                         "PUT",
                         { text: newText }
                       );
-                      const updated: CommentType = await res.json();
                       setComments((prev) => ({
                         ...prev,
                         [designId]: updateCommentTree(prev[designId], updated),
@@ -280,12 +279,11 @@ const DesignFeed: React.FC = () => {
                   className="bg-green-600 text-white px-3 py-1 rounded mt-1 hover:bg-green-700"
                   onClick={async () => {
                     if (!replyInputs[comment._id]?.trim()) return;
-                    const res = await authorizedFetch(
+                    const newReply = await authorizedFetch<CommentType>(
                       `${baseUrl}/olatinn/api/designComments/reply/${comment._id}`,
                       "POST",
                       { text: replyInputs[comment._id] }
                     );
-                    const newReply: CommentType = await res.json();
                     const addReply = (comments: CommentType[]): CommentType[] =>
                       comments.map((c) =>
                         c._id === comment._id
@@ -335,7 +333,12 @@ const DesignFeed: React.FC = () => {
             <h2 className="text-4xl md:text-5xl font-extrabold text-gray-900">{design.title}</h2>
             <p className="mt-4 text-lg md:text-xl text-gray-700">{design.description}</p>
             {design.link && (
-              <a href={design.link} target="_blank" rel="noopener noreferrer" className="inline-block mt-3 text-blue-600">
+              <a
+                href={design.link}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-block mt-3 text-blue-600"
+              >
                 Visit Link
               </a>
             )}
@@ -369,10 +372,11 @@ const DesignFeed: React.FC = () => {
                   <button
                     onClick={async () => {
                       if (!commentInputs[design._id]?.trim()) return;
-                      const res = await authorizedFetch(`${baseUrl}/olatinn/api/designComments/${design._id}`, "POST", {
-                        text: commentInputs[design._id],
-                      });
-                      const newComment: CommentType = await res.json();
+                      const newComment = await authorizedFetch<CommentType>(
+                        `${baseUrl}/olatinn/api/designComments/${design._id}`,
+                        "POST",
+                        { text: commentInputs[design._id] }
+                      );
                       setComments((prev) => ({
                         ...prev,
                         [design._id]: [newComment, ...(prev[design._id] || [])],
