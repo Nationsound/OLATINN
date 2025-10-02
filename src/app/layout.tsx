@@ -1,12 +1,10 @@
-import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Navbar from "./components/navbar/Navbar";
 import Footer from "./components/footer/Footer";
-import ChatBox from "./components/chat/ChatBox";
 import UserChatWidget from "./components/chat/ChatBox";
 import { BlogProvider } from "./context/BlogContext";
-
+import SEOProvider from "../app/seoProvider"; 
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -18,11 +16,6 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: "OLATINN",
-  description: "Olusola Adebayo Tech and Innovation Limited",
-};
-
 export default function RootLayout({
   children,
 }: {
@@ -33,12 +26,14 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-white text-gray-900`}
       >
+        {/* ✅ Client-side SEO provider */}
+        <SEOProvider />
+
         <Navbar />
         <main className="min-h-screen">
-          <BlogProvider> {children} </BlogProvider>
-          </main>
-        <UserChatWidget 
-      />
+          <BlogProvider>{children}</BlogProvider>
+        </main>
+        <UserChatWidget />
         <Footer />
       </body>
     </html>

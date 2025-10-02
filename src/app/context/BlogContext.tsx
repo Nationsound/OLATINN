@@ -2,7 +2,7 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect } from "react";
 import { dummyBlogs } from "@/app/index/dummy/DummyData"; // import your new dummy file
 
-type Blog = {
+export type Blog = {
   id: number;
   slug: string;
   title: string;

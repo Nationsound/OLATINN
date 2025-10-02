@@ -1,18 +1,24 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { NextSeo } from "next-seo";
 import Image from "next/image";
 
 const AboutDetails = () => {
   const text = "FROM START-UPs INTO INDUSTRY LEADERS";
 
-  // Staggered animation using motion.div around letters instead of variants on spans
+  // Animated heading letters
   const letters = text.split("").map((char, idx) => (
     <motion.span
       key={idx}
       initial={{ opacity: 0, y: 50 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: idx * 0.05, type: "spring", damping: 12, stiffness: 100 }}
+      transition={{
+        delay: idx * 0.05,
+        type: "spring",
+        damping: 12,
+        stiffness: 100,
+      }}
       className="inline-block"
     >
       {char === " " ? "\u00A0" : char}
@@ -39,64 +45,95 @@ const AboutDetails = () => {
   ];
 
   return (
-    <section className="py-16 px-6 lg:px-20 bg-gray-50">
-      {/* Heading */}
-      <h1 className="w-full max-w-5xl mx-auto text-4xl font-serif leading-relaxed tracking-widest text-indigo-950 mb-8 flex flex-wrap">
-        {letters}
-      </h1>
+    <>
+      {/* ✅ SEO Meta Tags */}
+      <NextSeo
+        title="About OLATINN | From Startups into Industry Leaders"
+        description="Learn more about OLATINN's scalable solutions, creative designs, and innovative systems that empower businesses to grow from startups into industry leaders."
+        canonical="https://olatinnlimited.com/about"
+        openGraph={{
+          url: "https://olatinnlimited.com/about",
+          title: "About OLATINN | From Startups into Industry Leaders",
+          description:
+            "OLATINN delivers scalable solutions, creative designs, and innovative systems that empower startups to become industry leaders.",
+          images: [
+            {
+              url: "/images/about.png", // must exist in /public/images
+              width: 1200,
+              height: 630,
+              alt: "About OLATINN",
+              type: "image/png",
+            },
+          ],
+          siteName: "OLATINN",
+        }}
+        twitter={{
+          handle: "@olatinn",
+          site: "@olatinn",
+          cardType: "summary_large_image",
+        }}
+      />
 
-      {/* Content */}
-      <div className="flex flex-col lg:flex-row items-center gap-10">
-        {/* Image */}
-        <motion.div
-          initial={{ opacity: 0, x: -80 }}
-          whileInView={{ opacity: 1, x: 0 }}
-          transition={{ duration: 1 }}
-          viewport={{ once: true }}
-          className="flex-1"
-        >
-          <Image
-            src="/images/about.png"
-            alt="About OLATINN"
-            width={500}
-            height={500}
-            className="w-full h-full max-h-[800px] object-cover rounded-2xl shadow-lg hover:opacity-90 transition duration-500"
-          />
-        </motion.div>
+      {/* ✅ Page Content */}
+      <section className="py-16 px-6 lg:px-20 bg-gray-50">
+        {/* Heading */}
+        <h1 className="w-full max-w-5xl mx-auto text-4xl font-serif leading-relaxed tracking-widest text-indigo-950 mb-8 flex flex-wrap">
+          {letters}
+        </h1>
 
-        {/* Paragraph + Cards */}
-        <div className="flex-1 max-w-[700px]">
-          <motion.p
-            initial={{ opacity: 0, y: 40 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
+        {/* Content */}
+        <div className="flex flex-col lg:flex-row items-center gap-10">
+          {/* Image */}
+          <motion.div
+            initial={{ opacity: 0, x: -80 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            transition={{ duration: 1 }}
             viewport={{ once: true }}
-            className="text-lg text-gray-700 leading-relaxed mb-12 font-serif tracking-wide"
+            className="flex-1"
           >
-            At <span className="font-semibold text-gray-900">OLATINN</span>, we are passionate
-            about delivering technology solutions that empower businesses and individuals. From
-            scalable cloud infrastructure to creative designs and innovative systems, our mission is
-            to transform ideas into impactful realities.
-          </motion.p>
+            <Image
+              src="/images/about.png"
+              alt="About OLATINN"
+              width={500}
+              height={500}
+              className="w-full h-full max-h-[800px] object-cover rounded-2xl shadow-lg hover:opacity-90 transition duration-500"
+            />
+          </motion.div>
 
-          <div className="grid sm:grid-cols-2 gap-6">
-            {cards.map((item, idx) => (
-              <motion.div
-                key={idx}
-                initial={{ opacity: 0, y: 40 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.8, delay: idx * 0.2 }}
-                viewport={{ once: true }}
-                className="p-6 bg-white rounded-2xl shadow-md hover:shadow-xl transition-shadow duration-500 border border-gray-100 hover:border-indigo-500"
-              >
-                <h4 className="text-xl font-semibold mb-3 text-indigo-600">{item.title}</h4>
-                <p className="text-gray-600 leading-relaxed">{item.desc}</p>
-              </motion.div>
-            ))}
+          {/* Paragraph + Cards */}
+          <div className="flex-1 max-w-[700px]">
+            <motion.p
+              initial={{ opacity: 0, y: 40 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8 }}
+              viewport={{ once: true }}
+              className="text-lg text-gray-700 leading-relaxed mb-12 font-serif tracking-wide"
+            >
+              At <span className="font-semibold text-gray-900">OLATINN</span>, we are passionate
+              about delivering technology solutions that empower businesses and individuals. From
+              scalable cloud infrastructure to creative designs and innovative systems, our mission
+              is to transform ideas into impactful realities.
+            </motion.p>
+
+            <div className="grid sm:grid-cols-2 gap-6">
+              {cards.map((item, idx) => (
+                <motion.div
+                  key={idx}
+                  initial={{ opacity: 0, y: 40 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.8, delay: idx * 0.2 }}
+                  viewport={{ once: true }}
+                  className="p-6 bg-white rounded-2xl shadow-md hover:shadow-xl transition-shadow duration-500 border border-gray-100 hover:border-indigo-500"
+                >
+                  <h4 className="text-xl font-semibold mb-3 text-indigo-600">{item.title}</h4>
+                  <p className="text-gray-600 leading-relaxed">{item.desc}</p>
+                </motion.div>
+              ))}
+            </div>
           </div>
         </div>
-      </div>
-    </section>
+      </section>
+    </>
   );
 };
 
