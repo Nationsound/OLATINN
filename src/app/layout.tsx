@@ -4,7 +4,7 @@ import Navbar from "./components/navbar/Navbar";
 import Footer from "./components/footer/Footer";
 import UserChatWidget from "./components/chat/ChatBox";
 import { BlogProvider } from "./context/BlogContext";
-import SEOProvider from "../app/seoProvider"; 
+
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -26,8 +26,8 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-white text-gray-900`}
       >
-        {/* ✅ Client-side SEO provider */}
-        <SEOProvider />
+      
+        
 
         <Navbar />
         <main className="min-h-screen">

@@ -4,7 +4,6 @@ import Image from "next/image";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { NextSeo } from "next-seo";
 import UserInteraction from "../interaction/UserInteraction";
 import {Blog} from "../../context/BlogContext";
 import { useBlog } from "@/app/context/BlogContext";
@@ -97,31 +96,6 @@ const BlogDetails = () => {
   return (
     <>
       {/* ✅ SEO for each blog */}
-      <NextSeo
-        title={`${blog.title} | OLATINN Blog`}
-        description={blog.excerpt || "Read insightful articles from OLATINN."}
-        canonical={`https://olatinnlimited.com/blog/${blog.slug}`}
-        openGraph={{
-          url: `https://olatinnlimited.com/blog/${blog.slug}`,
-          title: `${blog.title} | OLATINN Blog`,
-          description: blog.excerpt,
-          images: [
-            {
-              url: blog.coverImage || "/images/placeholder.jpg",
-              width: 1200,
-              height: 630,
-              alt: blog.title,
-              type: "image/jpeg",
-            },
-          ],
-          siteName: "OLATINN",
-        }}
-        twitter={{
-          handle: "@olatinn",
-          site: "@olatinn",
-          cardType: "summary_large_image",
-        }}
-      />
 
       <AnimatePresence mode="wait">
         <motion.div

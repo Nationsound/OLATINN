@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { FaArrowLeft, FaArrowRight } from "react-icons/fa";
 import Image from "next/image";
-import { NextSeo } from "next-seo";
 import { useBlog, Blog } from "@/app/context/BlogContext";
 import { dummyBlogs } from "../dummy/DummyData";
 
@@ -86,31 +85,6 @@ const BlogList = () => {
 
   return (
     <>
-      <NextSeo
-        title="Dive Into The Amazing World Of Technology | OLatinn"
-        description="Explore insightful blogs on technology, innovation, and digital transformation. Stay updated with OLatinn’s latest articles."
-        canonical="http://www.olatinnlimited.com/blog"
-        openGraph={{
-          url: "http://www.olatinnlimited.com/blog",
-          title: "Dive Into The Amazing World Of Technology | OLatinn",
-          description:
-            "Explore insightful blogs on technology, innovation, and digital transformation. Stay updated with OLatinn’s latest articles.",
-          images: [
-            {
-              url: "/images/placeholder.jpg",
-              width: 1200,
-              height: 630,
-              alt: "OLatinn Blog Cover",
-            },
-          ],
-          site_name: "OLatinn",
-        }}
-        twitter={{
-          handle: "@olatinn",
-          site: "@olatinn",
-          cardType: "summary_large_image",
-        }}
-      />
 
       <div className="w-full flex justify-center px-4 py-12">
         <div className="w-full max-w-[1300px]">

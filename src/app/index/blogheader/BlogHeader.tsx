@@ -3,41 +3,13 @@
 import { motion } from "framer-motion";
 import { Home } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { NextSeo } from "next-seo";
+
 
 const BlogHeader = () => {
   const router = useRouter();
 
   return (
     <>
-      {/* ✅ SEO for Blog landing page */}
-      <NextSeo
-        title="OLATINN Blog | Insights, News & Updates"
-        description="Explore the OLATINN Blog for insights on technology, authentication, business growth strategies, and more. Stay informed and inspired."
-        canonical="https://olatinnlimited.com/blog"
-        openGraph={{
-          url: "https://olatinnlimited.com/blog",
-          title: "OLATINN Blog | Insights, News & Updates",
-          description:
-            "Explore the OLATINN Blog for insights on technology, authentication, business growth strategies, and more.",
-          images: [
-            {
-              url: "https://olatinnlimited.com/images/olatinn-blog-banner.jpg",
-              width: 1200,
-              height: 630,
-              alt: "OLATINN Blog",
-              type: "image/jpeg",
-            },
-          ],
-          siteName: "OLATINN",
-        }}
-        twitter={{
-          handle: "@olatinn",
-          site: "@olatinn",
-          cardType: "summary_large_image",
-        }}
-      />
-
       <section
         className="w-full h-[250px] py-12 px-6 flex flex-col md:flex-row items-center justify-between gap-6 mt-18"
         style={{ backgroundColor: "var(--secondary)" }}
