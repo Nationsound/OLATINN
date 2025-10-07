@@ -19,7 +19,7 @@ const HomePage = () => {
         <LandingPage />
       </div>
       <div>
-        <TechTermsSection />
+        <TechTermsSection /> 
       </div>
       <div>
         <BusinessTechSection />  

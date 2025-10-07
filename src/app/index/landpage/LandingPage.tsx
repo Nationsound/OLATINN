@@ -2,7 +2,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect } from "react";
 import { Typewriter } from "react-simple-typewriter";
-import { NextSeo } from "next-seo";
+
 
 const slides = [
   {
@@ -34,32 +34,7 @@ const LandingPage = () => {
 
   return (
     <>
-      {/* ✅ SEO for Landing Page */}
-      <NextSeo
-        title="OLATINN - Olusola Adebayo Tech and Innovation Limited"
-        description="We build without defects — delivering scalable cloud infrastructure, creative designs, and innovative tech solutions for businesses and individuals."
-        canonical="https://www.olatinnlimited.com"
-        openGraph={{
-          url: "https://www.olatinnlimited.com",
-          title: "OLATINN - Olusola Adebayo Tech and Innovation Limited",
-          description:
-            "Scalable cloud solutions, innovation, and creative designs to empower businesses and individuals.",
-          images: [
-            {
-              url: "https://www.olatinnlimited.com/images/og-landing.jpg",
-              width: 1200,
-              height: 630,
-              alt: "OLATINN Landing Page",
-            },
-          ],
-          siteName: "OLATINN",
-        }}
-        twitter={{
-          handle: "@olatinn",
-          site: "@olatinn",
-          cardType: "summary_large_image",
-        }}
-      />
+
 
       {/* ✅ Landing Page Hero */}
       <div className="relative h-screen w-full overflow-hidden">
