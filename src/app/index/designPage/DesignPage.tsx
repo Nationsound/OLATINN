@@ -416,7 +416,7 @@ const DesignPage: React.FC = () => {
         >
           <FaHeart /> {typeof design.likes === "number" ? design.likes : 0}
         </button>
-        <button className="flex items-center gap-1 text-green-600">
+        <button className="flex items-center gap-1 text-green-600 cursor-default">
           <FaCommentAlt /> {Array.isArray(comments) ? comments.length : 0}
         </button>
         <button
