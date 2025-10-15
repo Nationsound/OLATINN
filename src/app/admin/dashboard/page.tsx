@@ -8,6 +8,8 @@ import AdminContacts from "@/app/components/adminContact/AdminContact";
 import AdminDashboard from "@/app/components/adminDetails/AdminDashboard";
 import AdminReviews from "@/app/components/adminReview/Adminreviews";
 import DesignTemplate from "@/app/index/designtemplate/DesignTemplate";
+import InvoicesPage from "@/app/invoices/page";
+import CreateInvoicePage from "@/app/invoices/create/CreateInvoice";
 
 const Page = () => {
   return (
@@ -100,10 +102,39 @@ const Page = () => {
           transition={{ duration: 0.6 }}
           className="bg-white shadow-md rounded-2xl p-6"
         >
-          <h2 className="text-xl font-semibold mb-4 text-[#959A4A]">
+          <h2 className="text-xl font-semibold mb-4 text-[#5adfe8]">
             Reviews and Feedback
           </h2>
           <AdminReviews />
+        </motion.div>
+      </div>
+
+      {/* Invoices */}
+      <div className="grid md:grid-cols-2 gap-8">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
+          className="bg-white shadow-md rounded-2xl p-6"
+        >
+          <h2 className="text-xl font-semibold mb-4 text-[#5adfe8]">
+            Create Client Invoices
+          </h2>
+          <CreateInvoicePage />
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
+          className="bg-white shadow-md rounded-2xl p-6"
+        >
+          <h2 className="text-xl font-semibold mb-4 text-[#5adfe8]">
+            All Invoices
+          </h2>
+          <InvoicesPage />
         </motion.div>
       </div>
     </div>

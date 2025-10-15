@@ -9,6 +9,7 @@ import GoalsSection from '../index/goals/GoalsSection'
 import StructuredData from '../index/structure/StructuredData'
 import TrustSection from '../index/trust/TrustSection'
 import ServiceSection from '../index/servicesection/ServiceSection'
+import FAQSection from '../components/faq/Faq'
 
 
 
@@ -44,6 +45,9 @@ const HomePage = () => {
       </div>
       <div>
         <ServiceSection />
+      </div>
+      <div>
+        <FAQSection />
       </div>
     </div>
   )

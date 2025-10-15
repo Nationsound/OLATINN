@@ -37,7 +37,7 @@ const UserDashboardDesigns: React.FC = () => {
 
   return (
     <div className="bg-[#5adfe8] shadow-lg rounded-xl p-6">
-      <h2 className="text-2xl font-bold mb-3">Latest Design</h2>
+      <h2 className="text-2xl font-bold mb-3">Our Latest Design</h2>
 
       {latest ? (
         <div className="space-y-4">

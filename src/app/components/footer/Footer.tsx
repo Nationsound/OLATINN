@@ -5,7 +5,7 @@ import { FaFacebookF, FaTwitter, FaInstagram, FaLinkedinIn } from "react-icons/f
 const Footer = () => {
   return (
     <footer className="bg-[#333b69] text-white py-10 mt-5">
-      <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-3 gap-10">
+      <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-4 gap-10">
         {/* Logo & About */}
         <div>
           <h2 className="text-2xl font-bold mb-4">OLATINN</h2>
@@ -24,6 +24,17 @@ const Footer = () => {
             <li><Link href="/services" className="hover:text-[var(--primary)]">Services</Link></li>
             <li><Link href="/blog" className="hover:text-[var(--primary)]">Blog</Link></li>
             <li><Link href="/contact" className="hover:text-[var(--primary)]">Contact</Link></li>
+          </ul>
+        </div>
+
+        {/* Legal & Policy Links */}
+        <div>
+          <h3 className="text-xl font-semibold mb-4">Legal</h3>
+          <ul className="space-y-2">
+            <li><Link href="/brand-guidelines" className="hover:text-[var(--primary)]">Brand Guidelines</Link></li>
+            <li><Link href="/privacy-policy" className="hover:text-[var(--primary)]">Privacy Policy</Link></li>
+            <li><Link href="/terms-of-services" className="hover:text-[var(--primary)]">Terms of Service</Link></li>
+            <li><Link href="/cookie-policy" className="hover:text-[var(--primary)]">Cookie Policy</Link></li>
           </ul>
         </div>
 

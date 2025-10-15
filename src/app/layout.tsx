@@ -4,6 +4,8 @@ import Navbar from "./components/navbar/Navbar";
 import Footer from "./components/footer/Footer";
 import UserChatWidget from "./components/chat/ChatBox";
 import { BlogProvider } from "./context/BlogContext";
+import CookieConsent from "./components/cookieConsent/CookieConsent";
+import ScrollToTopButton from "./components/scrollToTopButton/ScrollToTopButton";
 
 
 const geistSans = Geist({
@@ -32,9 +34,12 @@ export default function RootLayout({
         <Navbar />
         <main className="min-h-screen">
           <BlogProvider>{children}</BlogProvider>
+          
         </main>
         <UserChatWidget />
         <Footer />
+        <ScrollToTopButton />
+        <CookieConsent />
       </body>
     </html>
   );
