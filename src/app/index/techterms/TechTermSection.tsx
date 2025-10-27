@@ -1,6 +1,6 @@
 "use client";
-import { useState } from "react";
-import { motion } from "framer-motion";
+import { useState, useEffect, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   FaCloud,
   FaLock,
@@ -35,14 +35,32 @@ const TechTermsSection = () => {
   const [page, setPage] = useState(0);
   const itemsPerPage = 4;
   const totalPages = Math.ceil(techTerms.length / itemsPerPage);
+  const sectionRef = useRef<HTMLDivElement>(null);
+  const [isVisible, setIsVisible] = useState(false);
 
-  const handleNext = () => {
-    if (page < totalPages - 1) setPage(page + 1);
-  };
+  // ✅ Auto-slide only when visible
+  useEffect(() => {
+    if (!isVisible) return;
 
-  const handlePrev = () => {
-    if (page > 0) setPage(page - 1);
-  };
+    const interval = setInterval(() => {
+      setPage((prev) => (prev < totalPages - 1 ? prev + 1 : 0));
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [isVisible, totalPages]);
+
+  // ✅ Detect when section is visible in viewport
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => setIsVisible(entry.isIntersecting),
+      { threshold: 0.3 }
+    );
+    if (sectionRef.current) observer.observe(sectionRef.current);
+    return () => observer.disconnect();
+  }, []);
+
+  const handleNext = () => setPage((p) => (p < totalPages - 1 ? p + 1 : 0));
+  const handlePrev = () => setPage((p) => (p > 0 ? p - 1 : totalPages - 1));
 
   const currentItems = techTerms.slice(
     page * itemsPerPage,
@@ -50,37 +68,50 @@ const TechTermsSection = () => {
   );
 
   return (
-    <section className="py-12 bg-white text-gray-800">
-      <h2 className="text-3xl font-bold text-center mb-8">
+    <section
+      ref={sectionRef}
+      className="py-12 bg-white text-gray-800 overflow-hidden relative"
+    >
+      <h2 className="text-3xl font-bold text-center mb-4">
         Simplifying Technology for Real-World Impact
       </h2>
 
-      {/* Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 px-6">
-        {currentItems.map((item, idx) => (
+      {/* ✅ Wrapping container with fixed min height */}
+      <div className="relative min-h-[450px] sm:min-h-[400px] md:min-h-[380px] lg:min-h-[360px] flex items-center justify-center">
+        <AnimatePresence mode="wait">
           <motion.div
-            key={idx}
-            className="flex flex-col items-center p-6 rounded-lg shadow-md border cursor-pointer bg-white hover:bg-[var(--btn-hover)] transition-colors"
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: idx * 0.15 }}
-            whileHover={{ scale: 1.05 }}
+            key={page}
+            initial={{ opacity: 0, x: 100 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -100 }}
+            transition={{ duration: 0.6 }}
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 px-6 w-full"
           >
-            <div className="text-5xl mb-4 text-[var(--btn)] hover:text-white transition">
-              {item.icon}
-            </div>
-            <h3 className="text-xl font-semibold mb-2">{item.title}</h3>
-            <p className="text-center text-sm text-gray-600">{item.desc}</p>
+            {currentItems.map((item, idx) => (
+              <motion.div
+                key={idx}
+                className="flex flex-col items-center p-6 rounded-lg shadow-md border cursor-pointer bg-white hover:bg-[var(--btn-hover)] transition-colors"
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: idx * 0.1 }}
+                whileHover={{ scale: 1.05 }}
+              >
+                <div className="text-5xl mb-4 text-[var(--btn)] hover:text-white transition">
+                  {item.icon}
+                </div>
+                <h3 className="text-xl font-semibold mb-2">{item.title}</h3>
+                <p className="text-center text-sm text-gray-600">{item.desc}</p>
+              </motion.div>
+            ))}
           </motion.div>
-        ))}
+        </AnimatePresence>
       </div>
 
-      {/* Pagination controls */}
-      <div className="flex justify-center items-center mt-8 space-x-6">
+      {/* ✅ Buttons now always below grid */}
+      <div className="flex justify-center items-center mt-10 space-x-6 relative z-10">
         <button
           onClick={handlePrev}
-          disabled={page === 0}
-          className="px-4 py-2 rounded-full bg-[var(--btn)] text-white hover:bg-[var(--btn-hover)] disabled:opacity-50"
+          className="px-4 py-2 rounded-full bg-[var(--btn)] text-white hover:bg-[var(--btn-hover)]"
         >
           ← Prev
         </button>
@@ -89,8 +120,7 @@ const TechTermsSection = () => {
         </span>
         <button
           onClick={handleNext}
-          disabled={page === totalPages - 1}
-          className="px-4 py-2 rounded-full bg-[var(--btn)] text-white hover:bg-[var(--btn-hover)] disabled:opacity-50"
+          className="px-4 py-2 rounded-full bg-[var(--btn)] text-white hover:bg-[var(--btn-hover)]"
         >
           Next →
         </button>
