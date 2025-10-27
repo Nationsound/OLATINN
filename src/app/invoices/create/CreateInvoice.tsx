@@ -2,6 +2,7 @@
 
 import React, { useState, ChangeEvent, FormEvent } from "react";
 import { motion } from "framer-motion";
+import Image from "next/image"; // ✅ replaces <img>
 
 interface Service {
   description: string;
@@ -35,19 +36,21 @@ export default function CreateInvoicePage() {
   const [loading, setLoading] = useState(false);
   const [alert, setAlert] = useState<AlertType>({ type: "", message: "" });
 
-  // Handle input change for client info, deposit
-  const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  // ✅ Handle input change for client info, deposit
+  const handleChange = (
+    e: ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ): void => {
     const { name, value } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [name]: name === "deposit" ? Number(value) : value, // convert deposit to number
+      [name]: name === "deposit" ? Number(value) : value,
     }));
   };
 
-  // Handle logo upload
-  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+  // ✅ Handle logo upload
+  const handleFileChange = (e: ChangeEvent<HTMLInputElement>): void => {
     const file = e.target.files?.[0] || null;
-    setFormData(prev => ({ ...prev, logo: file }));
+    setFormData((prev) => ({ ...prev, logo: file }));
 
     if (file) {
       const reader = new FileReader();
@@ -58,29 +61,33 @@ export default function CreateInvoicePage() {
     }
   };
 
-  // Handle service field change
-  const handleServiceChange = (index: number, field: keyof Service, value: string) => {
+  // ✅ Handle service field change
+  const handleServiceChange = (
+    index: number,
+    field: keyof Service,
+    value: string
+  ): void => {
     const newServices = [...formData.services];
     newServices[index][field] = value;
-    setFormData(prev => ({ ...prev, services: newServices }));
+    setFormData((prev) => ({ ...prev, services: newServices }));
   };
 
-  // Add new service
-  const addService = () => {
-    setFormData(prev => ({
+  // ✅ Add new service
+  const addService = (): void => {
+    setFormData((prev) => ({
       ...prev,
       services: [...prev.services, { description: "", amount: "" }],
     }));
   };
 
-  // Remove service
-  const removeService = (index: number) => {
+  // ✅ Remove service
+  const removeService = (index: number): void => {
     const newServices = formData.services.filter((_, i) => i !== index);
-    setFormData(prev => ({ ...prev, services: newServices }));
+    setFormData((prev) => ({ ...prev, services: newServices }));
   };
 
-  // Submit form
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+  // ✅ Submit form
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
     setLoading(true);
     setAlert({ type: "", message: "" });
@@ -89,24 +96,30 @@ export default function CreateInvoicePage() {
       const data = new FormData();
       data.append("clientName", formData.clientName);
       data.append("clientEmail", formData.clientEmail);
-      data.append("deposit", formData.deposit.toString()); // ✅ convert number to string
+      data.append("deposit", formData.deposit.toString());
       data.append("currency", formData.currency);
-      data.append("services", JSON.stringify(formData.services)); // ✅ send services as JSON string
+      data.append("services", JSON.stringify(formData.services));
       if (formData.logo) data.append("logo", formData.logo);
 
-      const res = await fetch("http://localhost:5000/olatinn/api/invoices/create", {
-        method: "POST",
-        body: data,
-      });
+      const res = await fetch(
+        "http://localhost:5000/olatinn/api/invoices/create",
+        {
+          method: "POST",
+          body: data,
+        }
+      );
 
       if (!res.ok) {
         const error = await res.json();
         throw new Error(error.error || "Error creating invoice");
       }
 
-      setAlert({ type: "success", message: "✅ Invoice created and emailed successfully!" });
+      setAlert({
+        type: "success",
+        message: "✅ Invoice created and emailed successfully!",
+      });
 
-      // Reset form
+      // ✅ Reset form
       setFormData({
         clientName: "",
         clientEmail: "",
@@ -116,8 +129,11 @@ export default function CreateInvoicePage() {
         logo: null,
       });
       setPreview(null);
-    } catch (err: any) {
-      setAlert({ type: "error", message: err.message });
+    } catch (err: unknown) {
+      // ✅ Replace `any` with proper type check
+      const message =
+        err instanceof Error ? err.message : "An unknown error occurred";
+      setAlert({ type: "error", message });
     } finally {
       setLoading(false);
     }
@@ -197,7 +213,9 @@ export default function CreateInvoicePage() {
                 value={service.description}
                 placeholder="Service Description"
                 required
-                onChange={(e) => handleServiceChange(index, "description", e.target.value)}
+                onChange={(e) =>
+                  handleServiceChange(index, "description", e.target.value)
+                }
                 className="flex-1 border p-2 rounded"
               />
 
@@ -206,7 +224,9 @@ export default function CreateInvoicePage() {
                 value={service.amount}
                 placeholder="Amount"
                 required
-                onChange={(e) => handleServiceChange(index, "amount", e.target.value)}
+                onChange={(e) =>
+                  handleServiceChange(index, "amount", e.target.value)
+                }
                 className="w-24 border p-2 rounded"
               />
 
@@ -229,7 +249,7 @@ export default function CreateInvoicePage() {
             + Add Another Service
           </button>
 
-          {/* Logo Upload */}
+          {/* ✅ Logo Upload (using next/image) */}
           <div className="border p-2 rounded">
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Company Logo (optional)
@@ -242,10 +262,12 @@ export default function CreateInvoicePage() {
             />
             {preview && (
               <div className="mt-3 flex justify-center">
-                <img
+                <Image
                   src={preview}
                   alt="Logo Preview"
-                  className="w-24 h-24 object-contain border rounded-md"
+                  width={96}
+                  height={96}
+                  className="object-contain border rounded-md"
                 />
               </div>
             )}

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import Image from "next/image"; // ✅ use next/image for optimization
 
 interface ServiceItem {
   description: string;
@@ -16,7 +17,7 @@ interface Invoice {
   total?: number;
   deposit?: number;
   balanceDue?: number;
-  currency?: string; // currency symbol from backend
+  currency?: string;
   pdfPath?: string;
   invoiceNumber?: string;
   logoUrl?: string;
@@ -26,15 +27,19 @@ export default function InvoicesPage() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
 
-  // Fetch all invoices
-  const fetchInvoices = async () => {
+  // ✅ Fetch all invoices
+  const fetchInvoices = async (): Promise<void> => {
     setLoading(true);
     try {
       const res = await fetch("http://localhost:5000/olatinn/api/invoices");
       const data = await res.json();
       setInvoices(data);
-    } catch (err) {
-      console.error("Error fetching invoices:", err);
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        console.error("Error fetching invoices:", err.message);
+      } else {
+        console.error("Unknown error fetching invoices");
+      }
     } finally {
       setLoading(false);
     }
@@ -44,8 +49,8 @@ export default function InvoicesPage() {
     fetchInvoices();
   }, []);
 
-  // Delete invoice by ID
-  const deleteInvoice = async (id: string) => {
+  // ✅ Delete invoice by ID
+  const deleteInvoice = async (id: string): Promise<void> => {
     if (!confirm("Are you sure you want to delete this invoice?")) return;
 
     try {
@@ -58,11 +63,11 @@ export default function InvoicesPage() {
         throw new Error(error.error || "Failed to delete invoice");
       }
 
-      // Remove deleted invoice from state
       setInvoices((prev) => prev.filter((inv) => inv._id !== id));
-    } catch (err: any) {
-      console.error("Error deleting invoice:", err.message);
-      alert("Failed to delete invoice: " + err.message);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Unexpected error";
+      console.error("Error deleting invoice:", message);
+      alert("Failed to delete invoice: " + message);
     }
   };
 
@@ -93,18 +98,22 @@ export default function InvoicesPage() {
             key={inv._id}
             className="bg-white shadow-md hover:shadow-lg transition rounded-2xl p-5 flex flex-col"
           >
-            {/* Logo */}
+            {/* ✅ Logo now uses next/image */}
             {inv.logoUrl && (
               <div className="flex justify-end mb-2">
-                <img
+                <Image
                   src={inv.logoUrl}
                   alt="Company Logo"
-                  className="w-20 h-20 object-contain rounded"
+                  width={80}
+                  height={80}
+                  className="object-contain rounded"
                 />
               </div>
             )}
 
-            <h2 className="font-semibold text-lg text-gray-800">{inv.clientName}</h2>
+            <h2 className="font-semibold text-lg text-gray-800">
+              {inv.clientName}
+            </h2>
             <p className="text-sm text-gray-500">{inv.clientEmail}</p>
 
             {/* Services */}

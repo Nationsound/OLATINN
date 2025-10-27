@@ -22,10 +22,17 @@ const AdminContacts: React.FC = () => {
         const res = await fetch("http://localhost:5000/olatinn/api/contact-reviews/contacts");
         const data = await res.json();
 
-        if (res.ok) setContacts(data);
-        else setError(data.message || "Failed to load contacts");
-      } catch (err: any) {
-        setError(err.message);
+        if (res.ok) {
+          setContacts(data);
+        } else {
+          setError(data.message || "Failed to load contacts");
+        }
+      } catch (err: unknown) {
+        if (err instanceof Error) {
+          setError(err.message);
+        } else {
+          setError("An unexpected error occurred");
+        }
       } finally {
         setLoading(false);
       }
