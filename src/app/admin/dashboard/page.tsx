@@ -21,7 +21,7 @@ const Page = () => {
         transition={{ duration: 0.5 }}
         className="text-center"
       >
-        <h1 className="text-3xl font-bold text-[#959A4A] mb-2">
+        <h1 className="text-3xl font-bold text-[#5adfe8] mb-2">
           Admin Control Center
         </h1>
         <p className="text-gray-500">
@@ -48,7 +48,7 @@ const Page = () => {
           transition={{ duration: 0.6 }}
           className="bg-white shadow-md rounded-2xl p-6"
         >
-          <h2 className="text-xl font-semibold mb-4 text-[#959A4A]">
+          <h2 className="text-xl font-semibold mb-4 text-[#5adfe8]">
             Design Templates
           </h2>
           <DesignTemplate />
@@ -61,7 +61,7 @@ const Page = () => {
           transition={{ duration: 0.6 }}
           className="bg-white shadow-md rounded-2xl p-6"
         >
-          <h2 className="text-xl font-semibold mb-4 text-[#959A4A]">
+          <h2 className="text-xl font-semibold mb-4 text-[#5adfe8]">
             Publish a Blog Post
           </h2>
           <AdminBlogForm />

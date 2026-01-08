@@ -42,8 +42,8 @@ const AdminReviews: React.FC = () => {
 
     const method = editingId ? "PUT" : "POST";
     const url = editingId
-      ? `http://localhost:5000/olatinn/api/contact-reviews/reviews/${editingId}`
-      : "http://localhost:5000/olatinn/api/contact-reviews/reviews";
+      ? `http://https://api.olatinnlimited.com/olatinn/api/contact-reviews/reviews/${editingId}`
+      : "http://https://api.olatinnlimited.com/olatinn/api/contact-reviews/reviews";
 
     const res = await fetch(url, {
       method,
@@ -61,7 +61,7 @@ const AdminReviews: React.FC = () => {
   const handleDelete = async (id: string) => {
     if (!window.confirm("Are you sure you want to delete this review?")) return;
 
-    const res = await fetch(`http://localhost:5000/olatinn/api/contact-reviews/reviews/${id}`, {
+    const res = await fetch(`https://api.olatinnlimited.com/olatinn/api/contact-reviews/reviews/${id}`, {
       method: "DELETE",
     });
 

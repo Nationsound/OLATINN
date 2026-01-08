@@ -15,13 +15,13 @@ interface Design {
 }
 
 const UserDashboardDesigns: React.FC = () => {
-  const [latest, setLatest] = useState<Design | null>(null);
+  const [latest, setLatest] = useState<Design | null>(null); 
   const router = useRouter();
 
   useEffect(() => {
     const fetchLatest = async () => {
       try {
-        const res = await fetch("http://localhost:5000/olatinn/api/designs/latest");
+        const res = await fetch("https://api.olatinnlimited.com/olatinn/api/designs/latest");
         if (!res.ok) {
           console.warn("No API route found or server error");
           return;

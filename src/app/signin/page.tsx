@@ -16,7 +16,7 @@ const Signin = () => {
 
     try {
       // 1️⃣ Sign in user
-      const res = await fetch("http://localhost:5000/olatinn/api/auth/signin", {
+      const res = await fetch("https://api.olatinnlimited.com/olatinn/api/auth/signin", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
@@ -34,7 +34,7 @@ const Signin = () => {
       alert("Login successful!");
 
       // 2️⃣ Check if profile exists
-      const profileRes = await fetch("http://localhost:5000/olatinn/api/profile/user", {
+      const profileRes = await fetch("https://api.olatinnlimited.com/olatinn/api/profile/user", {
         method: "GET",
         headers: {
           "Content-Type": "application/json",

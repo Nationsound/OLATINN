@@ -23,7 +23,7 @@ const SignupPage = () => {
     }
 
     try {
-      const res = await fetch("http://localhost:5000/olatinn/api/auth/signup", {
+      const res = await fetch("https://api.olatinnlimited.com/olatinn/api/auth/signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password, confirmPassword }),

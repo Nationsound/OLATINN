@@ -30,7 +30,7 @@ const ConsultationForm: React.FC = () => {
 
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/olatinn/api/contact-reviews/contact`,
+        `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000" || "https://api.olatinnlimited.com"}/olatinn/api/contact-reviews/contact`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

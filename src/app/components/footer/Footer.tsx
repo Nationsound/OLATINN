@@ -42,16 +42,16 @@ const Footer = () => {
         <div>
           <h3 className="text-xl font-semibold mb-4">Connect with Us</h3>
           <div className="flex gap-4">
-            <a href="#" target="_blank" className="p-2 bg-white/10 rounded-full hover:bg-[var(--primary)] transition">
+            <a href="https://web.facebook.com/profile.php?id=61576026159022" target="_blank" className="p-2 bg-white/10 rounded-full hover:bg-[var(--primary)] transition">
               <FaFacebookF />
             </a>
-            <a href="#" target="_blank" className="p-2 bg-white/10 rounded-full hover:bg-[var(--primary)] transition">
+            <a href="https://x.com/olatinn?s=21&t=n_v9RN_0agGI9WjSyUyrKw" target="_blank" className="p-2 bg-white/10 rounded-full hover:bg-[var(--primary)] transition">
               <FaTwitter />
             </a>
-            <a href="#" target="_blank" className="p-2 bg-white/10 rounded-full hover:bg-[var(--primary)] transition">
+            <a href="https://www.instagram.com/olatinnlimited/" target="_blank" className="p-2 bg-white/10 rounded-full hover:bg-[var(--primary)] transition">
               <FaInstagram />
             </a>
-            <a href="#" target="_blank" className="p-2 bg-white/10 rounded-full hover:bg-[var(--primary)] transition">
+            <a href="https://www.linkedin.com/in/olusola-oguntuase-779069353/" target="_blank" className="p-2 bg-white/10 rounded-full hover:bg-[var(--primary)] transition">
               <FaLinkedinIn />
             </a>
           </div>

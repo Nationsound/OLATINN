@@ -31,7 +31,7 @@ export default function InvoicesPage() {
   const fetchInvoices = async (): Promise<void> => {
     setLoading(true);
     try {
-      const res = await fetch("http://localhost:5000/olatinn/api/invoices");
+      const res = await fetch("https://api.olatinnlimited.com/olatinn/api/invoices");
       const data = await res.json();
       setInvoices(data);
     } catch (err: unknown) {
@@ -54,7 +54,7 @@ export default function InvoicesPage() {
     if (!confirm("Are you sure you want to delete this invoice?")) return;
 
     try {
-      const res = await fetch(`http://localhost:5000/olatinn/api/invoices/${id}`, {
+      const res = await fetch(`https://api.olatinnlimited.com/olatinn/api/invoices/${id}`, {
         method: "DELETE",
       });
 
@@ -169,7 +169,7 @@ export default function InvoicesPage() {
             <div className="mt-4 flex gap-2">
               {inv.pdfPath && (
                 <a
-                  href={`http://localhost:5000/olatinn/api/invoices/${inv._id}/download`}
+                  href={`https://api.olatinnlimited.com/olatinn/api/invoices/${inv._id}/download`}
                   className="flex-1 bg-[#000271] hover:bg-[#17acdd] text-white px-4 py-2 rounded-lg text-center font-semibold transition"
                 >
                   Download PDF

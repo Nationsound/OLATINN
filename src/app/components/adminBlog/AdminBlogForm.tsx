@@ -13,7 +13,7 @@ interface Blog {
   imageUrl?: string;
 }
 
-const API_BASE = "http://localhost:5000/olatinn/api/blogs"; 
+const API_BASE = "https://api.olatinnlimited.com/olatinn/api/blogs";  
 
 const AdminBlogForm = () => {
   
