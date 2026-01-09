@@ -43,7 +43,7 @@ const Dashboard = () => {
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        const res = await fetch("https://api.olatinnlimited.com/olatinn/api/profile/user", {
+        const res = await fetch("http://olatinn-api.us-east-1.elasticbeanstalk.com/olatinn/api/profile/user", {
           method: "GET",
           headers: {
             "Content-Type": "application/json",

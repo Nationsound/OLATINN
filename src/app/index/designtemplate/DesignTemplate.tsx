@@ -29,7 +29,7 @@ const DesignTemplate: React.FC = () => {
   // Fetch all designs
   const fetchDesigns = async () => {
     try {
-      const res = await fetch("https://api.olatinnlimited.com/olatinn/api/designs");
+      const res = await fetch("http://olatinn-api.us-east-1.elasticbeanstalk.com/olatinn/api/designs");
       if (!res.ok) throw new Error("Failed to fetch designs");
       const data: FormDataType[] = await res.json();
       setDesigns(data);
@@ -70,7 +70,7 @@ const DesignTemplate: React.FC = () => {
       if (editingId) {
         // Update
         const res = await fetch(
-          `https://api.olatinnlimited.com/olatinn/api/designs/${editingId}`,
+          `http://olatinn-api.us-east-1.elasticbeanstalk.com/olatinn/api/designs/${editingId}`,
           {
             method: "PUT",
             body: formData,
@@ -79,7 +79,7 @@ const DesignTemplate: React.FC = () => {
         if (!res.ok) throw new Error("Failed to update design");
       } else {
         // Create
-        const res = await fetch("https://api.olatinnlimited.com/olatinn/api/designs", {
+        const res = await fetch("http://olatinn-api.us-east-1.elasticbeanstalk.com/olatinn/api/designs", {
           method: "POST",
           body: formData,
         });
@@ -122,7 +122,7 @@ const DesignTemplate: React.FC = () => {
   const handleDelete = async (id: string) => {
     try {
       const res = await fetch(
-        `https://api.olatinnlimited.com/olatinn/api/designs/${id}`,
+        `http://olatinn-api.us-east-1.elasticbeanstalk.com/olatinn/api/designs/${id}`,
         { method: "DELETE" }
       );
       if (!res.ok) throw new Error("Failed to delete design");

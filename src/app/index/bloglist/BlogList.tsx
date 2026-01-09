@@ -22,7 +22,7 @@ interface BlogApiResponse {
   readingTime?: number;
 }
 
-const API_BASE = "https://api.olatinnlimited.com/olatinn/api/blogs";
+const API_BASE = "http://olatinn-api.us-east-1.elasticbeanstalk.com/olatinn/api/blogs";
 
 const BlogList = () => {
   const router = useRouter();

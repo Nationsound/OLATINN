@@ -24,7 +24,7 @@ const ProfileSetup = () => {
     setLoading(true);
 
     try {
-      const res = await fetch("https://api.olatinnlimited.com/olatinn/api/profile/user-profile", {
+      const res = await fetch("http://olatinn-api.us-east-1.elasticbeanstalk.com/olatinn/api/profile/user-profile", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

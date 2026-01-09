@@ -9,7 +9,7 @@ import {Blog} from "../../context/BlogContext";
 import { useBlog } from "@/app/context/BlogContext";
 import { dummyBlogs } from "../dummy/DummyData";
 
-const API_BASE = "https://api.olatinnlimited.com/olatinn/api/blogs";
+const API_BASE = "http://olatinn-api.us-east-1.elasticbeanstalk.com/olatinn/api/blogs";
 
 const BlogDetails = () => {
   const { selectedBlog, setSelectedBlog, allBlogs = [] } = useBlog();

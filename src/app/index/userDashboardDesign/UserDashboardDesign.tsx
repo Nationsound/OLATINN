@@ -21,7 +21,7 @@ const UserDashboardDesigns: React.FC = () => {
   useEffect(() => {
     const fetchLatest = async () => {
       try {
-        const res = await fetch("https://api.olatinnlimited.com/olatinn/api/designs/latest");
+        const res = await fetch("http://olatinn-api.us-east-1.elasticbeanstalk.com/olatinn/api/designs/latest");
         if (!res.ok) {
           console.warn("No API route found or server error");
           return;

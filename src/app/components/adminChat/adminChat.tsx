@@ -22,7 +22,7 @@ const AdminChat: React.FC = () => {
 
   useEffect(() => {
     // Connect socket only once
-    socket = io(process.env.NEXT_PUBLIC_BACKEND_URL || "https://api.olatinnlimited.com");
+    socket = io(process.env.NEXT_PUBLIC_BACKEND_URL || "http://olatinn-api.us-east-1.elasticbeanstalk.com/");
 
     // Register as admin
     socket.emit("register", { type: "admin", name: "Admin" });
