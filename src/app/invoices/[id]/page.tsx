@@ -25,7 +25,7 @@ export default function InvoiceDetailsPage() {
 
   useEffect(() => {
     if (!id) return;
-    fetch(`http://olatinn-api.us-east-1.elasticbeanstalk.com/olatinn/api/invoices/${id}`)
+    fetch(`https://api.olatinnlimited.com/olatinn/api/invoices/${id}`)
       .then((res) => res.json())
       .then((data) => {
         setInvoice(data);
@@ -121,7 +121,7 @@ export default function InvoiceDetailsPage() {
 
         <div className="flex justify-center mt-8">
           <a
-            href={`http://olatinn-api.us-east-1.elasticbeanstalk.com/olatinn/api/invoices/${invoice._id}/download`}
+            href={`https://api.olatinnlimited.com/olatinn/api/invoices/${invoice._id}/download`}
             className="px-6 py-3 rounded-lg bg-[#000271] text-white font-medium hover:bg-[#17acdd] transition"
           >
             Download PDF

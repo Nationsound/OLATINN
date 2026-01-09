@@ -22,7 +22,7 @@ const UserChatWidget: React.FC = () => {
   };
 
   useEffect(() => {
-    socket = io(process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000" || "http://olatinn-api.us-east-1.elasticbeanstalk.com/");
+    socket = io(process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000" || "https://api.olatinnlimited.com");
 
     // Register as user
     socket.emit("register", { type: "user", name: "Visitor" });

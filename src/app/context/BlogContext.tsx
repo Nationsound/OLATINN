@@ -25,7 +25,7 @@ type BlogContextType = {
 
 const BlogContext = createContext<BlogContextType | undefined>(undefined);
 
-const API_BASE = "http://olatinn-api.us-east-1.elasticbeanstalk.com/olatinn/api/blogs";
+const API_BASE = "https://api.olatinnlimited.com/olatinn/api/blogs";
 
 export const BlogProvider = ({ children }: { children: ReactNode }) => {
   const [selectedBlog, setSelectedBlog] = useState<Blog | null>(null);

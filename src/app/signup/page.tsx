@@ -23,7 +23,7 @@ const SignupPage = () => {
     }
 
     try {
-      const res = await fetch("http://olatinn-api.us-east-1.elasticbeanstalk.com/olatinn/api/auth/signup", {
+      const res = await fetch("https://api.olatinnlimited.com/olatinn/api/auth/signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password, confirmPassword }),

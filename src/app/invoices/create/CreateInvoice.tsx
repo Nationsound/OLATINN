@@ -102,7 +102,7 @@ export default function CreateInvoicePage() {
       if (formData.logo) data.append("logo", formData.logo);
 
       const res = await fetch(
-        "http://olatinn-api.us-east-1.elasticbeanstalk.com/olatinn/api/invoices/create",
+        "https://api.olatinnlimited.com/olatinn/api/invoices/create",
         {
           method: "POST",
           body: data,

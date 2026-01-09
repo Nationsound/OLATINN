@@ -22,7 +22,7 @@ const ContactPage: React.FC = () => {
   useEffect(() => {
     const fetchReviews = async () => {
       try {
-        const res = await fetch("http://olatinn-api.us-east-1.elasticbeanstalk.com/olatinn/api/contact-reviews/reviews");
+        const res = await fetch("https://api.olatinnlimited.com/olatinn/api/contact-reviews/reviews");
         const data = await res.json();
         setReviews(data);
       } catch (err) {
@@ -37,7 +37,7 @@ const ContactPage: React.FC = () => {
     setStatus("sending");
 
     try {
-      const res = await fetch("http://olatinn-api.us-east-1.elasticbeanstalk.com/olatinn/api/contact-reviews/contact", {
+      const res = await fetch("https://api.olatinnlimited.com/olatinn/api/contact-reviews/contact", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, email, message }),

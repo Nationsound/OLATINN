@@ -19,7 +19,7 @@ const AdminContacts: React.FC = () => {
   useEffect(() => {
     const fetchContacts = async () => {
       try {
-        const res = await fetch("http://olatinn-api.us-east-1.elasticbeanstalk.com/olatinn/api/contact-reviews/contacts");
+        const res = await fetch("https://api.olatinnlimited.com/olatinn/api/contact-reviews/contacts");
         const data = await res.json();
 
         if (res.ok) {
