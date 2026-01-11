@@ -13,7 +13,7 @@ interface Blog {
   imageUrl?: string;
 }
 
-const API_BASE = "https://api.olatinnlimited.com/olatinn/api/blogs";  
+const API_BASE = `${process.env.NEXT_PUBLIC_API_URL}/blogs`;  
 
 const AdminBlogForm = () => {
   
