@@ -5,7 +5,7 @@ import Image from "next/image";
 import { useParams, useRouter } from "next/navigation";
 import { FaHeart, FaCommentAlt, FaShareAlt, FaEdit, FaTrash } from "react-icons/fa";
 
-const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+const baseUrl = process.env.NEXT_PUBLIC_API_URL || "https://olatinn-server.onrender.com" || "http://localhost:5000";
 
 // --- Types ---
 interface User {
