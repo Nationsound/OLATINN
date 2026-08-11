@@ -28,7 +28,7 @@ const AdminReviews: React.FC = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
 
   const fetchReviews = async () => {
-    const res = await fetch("https://api.olatinnlimited.com/olatinn/api/contact-reviews/reviews");
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/contact-reviews/reviews`);
     const data = await res.json();
     setReviews(data);
   };
@@ -42,8 +42,8 @@ const AdminReviews: React.FC = () => {
 
     const method = editingId ? "PUT" : "POST";
     const url = editingId
-      ? `https://api.olatinnlimited.com/olatinn/api/contact-reviews/reviews/${editingId}`
-      : "https://api.olatinnlimited.com/olatinn/api/contact-reviews/reviews";
+      ? `${process.env.NEXT_PUBLIC_API_URL}/contact-reviews/reviews/${editingId}`
+      : `${process.env.NEXT_PUBLIC_API_URL}/contact-reviews/reviews`;
 
     const res = await fetch(url, {
       method,
@@ -61,7 +61,7 @@ const AdminReviews: React.FC = () => {
   const handleDelete = async (id: string) => {
     if (!window.confirm("Are you sure you want to delete this review?")) return;
 
-    const res = await fetch(`https://api.olatinnlimited.com/olatinn/api/contact-reviews/reviews/${id}`, {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/contact-reviews/reviews/${id}`, {
       method: "DELETE",
     });
 

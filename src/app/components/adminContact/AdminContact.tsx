@@ -19,7 +19,7 @@ const AdminContacts: React.FC = () => {
   useEffect(() => {
     const fetchContacts = async () => {
       try {
-        const res = await fetch("https://api.olatinnlimited.com/olatinn/api/contact-reviews/contacts");
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/contact-reviews/contacts`);
         const data = await res.json();
 
         if (res.ok) {

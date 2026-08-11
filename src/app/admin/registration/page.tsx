@@ -42,7 +42,7 @@ const AdminRegister: React.FC = () => {
     setLoading(true);
     try {
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/olatinn/api/admin/register`,
+        `${process.env.NEXT_PUBLIC_API_URL}/admin/register`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

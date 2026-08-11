@@ -22,14 +22,14 @@ const UserChatWidget: React.FC = () => {
   };
 
   useEffect(() => {
-    socket = io(process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000" || "https://api.olatinnlimited.com");
+    socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:5000" || "https://api.olatinnlimited.com");
 
     // Register as user
     socket.emit("register", { type: "user", name: "Visitor" });
 
     // Message handler
     const handleMessage = (payload: { message: string; senderType: "user" | "admin" }) => {
-      setMessages((prev) => [...prev, { text: payload.message, sender: payload.senderType }]);
+      setMessages((prev) => [...prev, { text: payload.message, sender: payload.senderType }]); 
     };
 
     socket.on("receive_message", handleMessage);

@@ -5,7 +5,7 @@ import Image from "next/image";
 import { useParams, useRouter } from "next/navigation";
 import { FaHeart, FaCommentAlt, FaShareAlt, FaEdit, FaTrash } from "react-icons/fa";
 
-const baseUrl = process.env.NEXT_PUBLIC_API_URL || "https://olatinn-server.onrender.com" || "http://localhost:5000";
+const baseUrl = process.env.NEXT_PUBLIC_API_URL;
 
 // --- Types ---
 interface User {
@@ -113,7 +113,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({ comments, setComments, 
       updateCommentsRecursively(prev, commentId, (c) => ({ ...c, likes: (c.likes || 0) + 1 }))
     );
     try {
-      await fetch(`${baseUrl}/olatinn/api/designComments/like/${commentId}`, {
+      await fetch(`${baseUrl}/designComments/like/${commentId}`, {
         method: "PATCH",
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -128,7 +128,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({ comments, setComments, 
     if (!newText || newText === safeText(oldText)) return;
 
     try {
-      const res = await fetch(`${baseUrl}/olatinn/api/designComments/${commentId}`, {
+      const res = await fetch(`${baseUrl}/designComments/${commentId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ text: newText }),
@@ -148,7 +148,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({ comments, setComments, 
     setComments((prev) => updateCommentsRecursively(prev, commentId, () => null));
 
     try {
-      await fetch(`${baseUrl}/olatinn/api/designComments/${commentId}`, {
+      await fetch(`${baseUrl}/designComments/${commentId}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -162,7 +162,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({ comments, setComments, 
     if (!text?.trim()) return;
 
     try {
-      const res = await fetch(`${baseUrl}/olatinn/api/designComments/reply/${parentId}`, {
+      const res = await fetch(`${baseUrl}/designComments/reply/${parentId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ text }),
@@ -182,7 +182,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({ comments, setComments, 
   const handlePostComment = async () => {
     if (!commentInput.trim()) return;
     try {
-      const res = await fetch(`${baseUrl}/olatinn/api/designComments/${designId}`, {
+      const res = await fetch(`${baseUrl}/designComments/${designId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ text: commentInput }),
@@ -303,8 +303,8 @@ const DesignPage: React.FC = () => {
     const fetchData = async () => {
       try {
         const [designRes, commentsRes] = await Promise.all([
-          fetch(`${baseUrl}/olatinn/api/designs/${id}`),
-          fetch(`${baseUrl}/olatinn/api/designComments/${id}`),
+          fetch(`${baseUrl}/designs/${id}`),
+          fetch(`${baseUrl}/designComments/${id}`),
         ]);
 
         if (!designRes.ok) throw new Error("Failed to fetch design");
@@ -337,7 +337,7 @@ const DesignPage: React.FC = () => {
     setDesign({ ...design, likes: design.likes + 1 });
 
     try {
-      const res = await fetch(`${baseUrl}/olatinn/api/designs/like/${id}`, {
+      const res = await fetch(`${baseUrl}/designs/like/${id}`, {
         method: "PATCH",
         headers: { Authorization: `Bearer ${token}` },
       });

@@ -88,7 +88,7 @@ const AdminDashboard: React.FC = () => {
   const handleUpdateBooking = async () => {
     if (!editingBooking) return;
     try {
-      const res = await fetch(`${apiBase}/olatinn/api/bookings/${editingBooking._id}`, {
+      const res = await fetch(`${apiBase}/bookings/${editingBooking._id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(editingBooking),

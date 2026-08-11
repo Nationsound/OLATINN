@@ -5,7 +5,7 @@ import { FaHeart, FaCommentAlt, FaShareAlt, FaEdit, FaTrash } from "react-icons/
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 
-const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/olatinn/api";
 
 // Utility: convert string to color
 const stringToColor = (str: string) => {
@@ -149,7 +149,7 @@ const DesignFeed: React.FC = () => {
 
     const fetchDesigns = async () => {
       try {
-        const data = await authorizedFetch<Design[]>(`${baseUrl}/olatinn/api/designs`);
+        const data = await authorizedFetch<Design[]>(`${baseUrl}/designs`);
         setDesigns(data);
 
         // Fetch comments for each design
@@ -172,7 +172,7 @@ const DesignFeed: React.FC = () => {
 
     if (action === "like") {
       try {
-        const updated = await authorizedFetch<Design>(`${baseUrl}/olatinn/api/designs/like/${designId}`, "PATCH");
+        const updated = await authorizedFetch<Design>(`${baseUrl}/designs/like/${designId}`, "PATCH");
         setDesigns((prev) => prev.map((d) => (d._id === designId ? updated : d)));
       } catch (err) {
         console.error(err);
@@ -205,7 +205,7 @@ const DesignFeed: React.FC = () => {
                   if (!currentUserId) return router.push("/signup");
                   try {
                     const updated = await authorizedFetch<CommentType>(
-                      `${baseUrl}/olatinn/api/designComments/like/${comment._id}`,
+                      `${baseUrl}/designComments/like/${comment._id}`,
                       "PATCH"
                     );
                     setComments((prev) => ({
@@ -233,7 +233,7 @@ const DesignFeed: React.FC = () => {
                       const newText = prompt("Edit comment", comment.text);
                       if (!newText) return;
                       const updated = await authorizedFetch<CommentType>(
-                        `${baseUrl}/olatinn/api/designComments/${comment._id}`,
+                        `${baseUrl}/designComments/${comment._id}`,
                         "PUT",
                         { text: newText }
                       );
@@ -280,7 +280,7 @@ const DesignFeed: React.FC = () => {
                   onClick={async () => {
                     if (!replyInputs[comment._id]?.trim()) return;
                     const newReply = await authorizedFetch<CommentType>(
-                      `${baseUrl}/olatinn/api/designComments/reply/${comment._id}`,
+                      `${baseUrl}/designComments/reply/${comment._id}`,
                       "POST",
                       { text: replyInputs[comment._id] }
                     );
@@ -405,7 +405,7 @@ const DesignFeed: React.FC = () => {
                   onClick={async () => {
                     if (!commentInputs[design._id]?.trim()) return;
                     const newComment = await authorizedFetch<CommentType>(
-                      `${baseUrl}/olatinn/api/designComments/${design._id}`,
+                      `${baseUrl}/designComments/${design._id}`,
                       "POST",
                       { text: commentInputs[design._id] }
                     );

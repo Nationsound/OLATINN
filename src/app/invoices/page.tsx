@@ -31,7 +31,7 @@ export default function InvoicesPage() {
   const fetchInvoices = async (): Promise<void> => {
     setLoading(true);
     try {
-      const res = await fetch("https://api.olatinnlimited.com/olatinn/api/invoices");
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/invoices`);
       const data = await res.json();
       setInvoices(data);
     } catch (err: unknown) {
@@ -54,7 +54,7 @@ export default function InvoicesPage() {
     if (!confirm("Are you sure you want to delete this invoice?")) return;
 
     try {
-      const res = await fetch(`https://api.olatinnlimited.com/olatinn/api/invoices/${id}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/invoices/${id}`, {
         method: "DELETE",
       });
 

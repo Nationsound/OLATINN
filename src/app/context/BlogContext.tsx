@@ -25,7 +25,6 @@ type BlogContextType = {
 
 const BlogContext = createContext<BlogContextType | undefined>(undefined);
 
-const API_BASE = "https://api.olatinnlimited.com/olatinn/api/blogs";
 
 export const BlogProvider = ({ children }: { children: ReactNode }) => {
   const [selectedBlog, setSelectedBlog] = useState<Blog | null>(null);
@@ -35,7 +34,7 @@ export const BlogProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const fetchBlogs = async () => {
       try {
-        const res = await fetch(API_BASE);
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/blogs`);
         if (!res.ok) throw new Error("Failed to fetch blogs from backend");
         const data: Blog[] = await res.json();
 

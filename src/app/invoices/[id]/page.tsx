@@ -25,7 +25,7 @@ export default function InvoiceDetailsPage() {
 
   useEffect(() => {
     if (!id) return;
-    fetch(`https://api.olatinnlimited.com/olatinn/api/invoices/${id}`)
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/invoices/${id}`)
       .then((res) => res.json())
       .then((data) => {
         setInvoice(data);
