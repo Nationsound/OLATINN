@@ -43,7 +43,7 @@ const Dashboard = () => {
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/profile/user`, {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/profile/user`, {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
@@ -69,7 +69,7 @@ const Dashboard = () => {
   // --- Logout handler ---
   const handleLogout = async () => {
     try {
-      const res = await fetch("https://api.olatinnlimited.com/olatinn/api/auth/signout", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/signout`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
       });
@@ -86,7 +86,7 @@ const Dashboard = () => {
   const handlePartnerSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     try {
-      const res = await fetch("https://api.olatinnlimited.com/olatinn/api/partners", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/partners`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -112,7 +112,7 @@ const Dashboard = () => {
   const handleSubscribeSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     try {
-      const res = await fetch("https://api.olatinnlimited.com/olatinn/api/subscribers/subscribe", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/subscribers/subscribe`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -138,7 +138,7 @@ const Dashboard = () => {
   const handleBookingSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     try {
-      const res = await fetch("https://api.olatinnlimited.com/olatinn/api/bookings/booking", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/bookings/booking`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
