@@ -94,7 +94,7 @@ const BlogList = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7 }}
           >
-            Dive Into The Amazing World Of Technology
+            Dive Into The Amazing World Of Technology and Brand Enhancements
           </motion.h1>
 
           <div className="flex flex-col gap-12 items-center">

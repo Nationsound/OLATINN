@@ -67,7 +67,7 @@ const ContactPage: React.FC = () => {
         className="bg-white/10 backdrop-blur-md p-8 rounded-2xl shadow-lg max-w-lg w-full text-white"
       >
         <h1 className="text-4xl font-bold text-center mb-4">Contact Us</h1>
-        <p className="text-center text-gray-200 mb-6">We’ll get back to you soon ✉️</p>
+        <p className="text-center text-gray-200 mb-6">We’ll get back to you soon... Kindly bear with us ✉️</p>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <input
