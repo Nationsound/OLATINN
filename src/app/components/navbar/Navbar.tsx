@@ -26,6 +26,7 @@ const Navbar = () => {
 
         {/* Links */}
         <ul className="flex gap-8 font-medium">
+          <li><Link href="/store-front">Olatinn Store Front</Link></li>
           <li><Link href="/about">About</Link></li>
           <li><Link href="/services">Services</Link></li>
           <li><Link href="/blog">Blog</Link></li>
@@ -70,6 +71,7 @@ const Navbar = () => {
       {/* Mobile Menu Drawer */}
       {isOpen && (
         <div className="fixed top-0 left-0 h-full w-64 bg-[var(--secondary)] text-white shadow-lg z-40 p-6 flex flex-col gap-6">
+          <Link href="/store-front" onClick={toggleMenu}>Olatinn Store Front</Link>
           <Link href="/about" onClick={toggleMenu}>About</Link>
           <Link href="/services" onClick={toggleMenu}>Services</Link>
           <Link href="/blog" onClick={toggleMenu}>Blog</Link>

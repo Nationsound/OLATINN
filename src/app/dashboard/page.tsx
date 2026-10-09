@@ -236,6 +236,139 @@ const Dashboard = () => {
             <h2 className="text-xl font-bold">Booking</h2>
             <p className="mt-2 text-sm">Access your booking dashboard and schedule services.</p>
           </div>
+
+          {/* Store Front Merchant Card */}
+{/* Build Your Store Card */}
+<div
+  onClick={() => router.push("/store-front/setup")}
+  role="button"
+  tabIndex={0}
+  onKeyDown={(e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      router.push("/store-front/setup");
+    }
+  }}
+  className="bg-gradient-to-br from-[#000271] via-[#171b91] to-[#17acdd] text-white rounded-2xl p-6 shadow-lg cursor-pointer hover:shadow-xl hover:scale-[1.02] transition duration-300"
+>
+  <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-white/20 mb-4">
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="27"
+      height="27"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M3 10h18" />
+      <path d="M5 10V20H19V10" />
+      <path d="M3 10L5 4H19L21 10" />
+      <path d="M9 20V14H15V20" />
+    </svg>
+  </div>
+
+  <h2 className="text-xl font-bold">Build Your Store</h2>
+
+  <p className="mt-2 text-sm text-white/90 leading-relaxed">
+    Create your online storefront, customize your brand, and showcase
+    your products to customers.
+  </p>
+
+  <div className="mt-5 flex items-center gap-2 font-semibold text-sm">
+    Get Started <span aria-hidden="true">→</span>
+  </div>
+</div>
+
+{/* My Stores Card */}
+<div
+  onClick={() => router.push("/store-front/my-stores")}
+  role="button"
+  tabIndex={0}
+  onKeyDown={(e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      router.push("/store-front/my-stores");
+    }
+  }}
+  className="bg-white border border-gray-200 text-[#000271] rounded-2xl p-6 shadow-lg cursor-pointer hover:shadow-xl hover:scale-[1.02] transition duration-300"
+>
+  <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-[#17acdd]/10 text-[#17acdd] mb-4">
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="27"
+      height="27"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <rect x="3" y="3" width="8" height="8" rx="1.5" />
+      <rect x="13" y="3" width="8" height="8" rx="1.5" />
+      <rect x="3" y="13" width="8" height="8" rx="1.5" />
+      <rect x="13" y="13" width="8" height="8" rx="1.5" />
+    </svg>
+  </div>
+
+  <h2 className="text-xl font-bold">My Stores</h2>
+
+  <p className="mt-2 text-sm text-gray-600 leading-relaxed">
+    View your existing storefronts, continue unfinished setups, and
+    manage your online businesses in one place.
+  </p>
+
+  <div className="mt-5 flex items-center gap-2 font-semibold text-sm text-[#17acdd]">
+    Manage Stores <span aria-hidden="true">→</span>
+  </div>
+</div>
+
+{/* Premium Plans Card */}
+<div
+  onClick={() => router.push("/store-front/plans")}
+  role="button"
+  tabIndex={0}
+  onKeyDown={(e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      router.push("/store-front/plans");
+    }
+  }}
+  className="bg-gradient-to-br from-[#5adfe8] to-[#17acdd] text-[#000271] rounded-2xl p-6 shadow-lg cursor-pointer hover:shadow-xl hover:scale-[1.02] transition duration-300"
+>
+  <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-white/40 mb-4">
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="27"
+      height="27"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="m12 3 2.7 5.5 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1-4.4-4.3 6.1-.9L12 3Z" />
+    </svg>
+  </div>
+
+  <h2 className="text-xl font-bold">Upgrade to Premium</h2>
+
+  <p className="mt-2 text-sm leading-relaxed">
+    Unlock more storefronts, higher product limits, and additional
+    tools as your business grows.
+  </p>
+
+  <div className="mt-5 flex items-center gap-2 font-semibold text-sm">
+    Explore Plans <span aria-hidden="true">→</span>
+  </div>
+</div>
         </div>
 
         {/* Partner Form */}

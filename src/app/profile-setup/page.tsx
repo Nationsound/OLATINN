@@ -17,7 +17,7 @@ const ProfileSetup = () => {
     const token = localStorage.getItem("olatinnToken");
     if (!token) {
       alert("No token found. Please login again.");
-      router.push("/signin");
+      router.push("/signin"); 
       return;
     }
 

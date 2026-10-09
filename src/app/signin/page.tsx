@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, FormEvent } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 
 const Signin = () => {
@@ -9,6 +9,16 @@ const Signin = () => {
   const [password, setPassword] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
   const router = useRouter();
+const searchParams = useSearchParams();
+
+const nextPath = searchParams.get("next");
+
+// const safeNextPath =
+//   nextPath &&
+//   nextPath.startsWith("/") &&
+//   !nextPath.startsWith("//")
+//     ? nextPath
+//     : "/dashboard";
 
   const handleSignin = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -34,26 +44,47 @@ const Signin = () => {
       alert("Login successful!");
 
       // 2️⃣ Check if profile exists
-      const profileRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/user-profile`, { 
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${data.token}`,
-        },
-      });
+      
+// 2. Check if the user profile exists
+// Check whether the user's profile exists
+const profileRes = await fetch(
+  `${process.env.NEXT_PUBLIC_API_URL}/profile/user`,
+  {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${data.token}`,
+    },
+  }
+);
 
-      if (profileRes.ok) {
-        const profileData = await profileRes.json();
+// Check the profile and choose the destination
+if (profileRes.ok) {
+  const profileData = await profileRes.json();
 
-        // Redirect based on profile completeness
-        if (profileData.fullName || profileData.address || profileData.age) {
-          router.push("/dashboard");
-        } else {
-          router.push("/profile-setup");
-        }
-      } else {
-        router.push("/profile-setup");
-      }
+  const profile =
+    profileData.profile ??
+    profileData.userProfile ??
+    profileData;
+
+  const isProfileComplete = Boolean(
+    profile.fullName?.trim() &&
+      profile.address?.trim() &&
+      profile.age
+  );
+
+  if (isProfileComplete) {
+    // Profile complete: go to the main user dashboard
+    router.replace("/dashboard");
+  } else {
+    // Profile incomplete: complete it first
+    router.replace("/profile-setup?next=%2Fdashboard");
+  }
+} else if (profileRes.status === 404) {
+  // No profile found: create one before entering the dashboard
+  router.replace("/profile-setup?next=%2Fdashboard");
+} else {
+  alert("We couldn't verify your profile. Please try again.");
+}
     } catch (error) {
       console.error("Signin error:", error);
       alert("Error connecting to server");
