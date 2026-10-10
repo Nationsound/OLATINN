@@ -1,11 +1,20 @@
+
 "use client";
 
-import { useEffect, useState, ChangeEvent, FormEvent } from "react";
+import {
+  useEffect,
+  useState,
+  type ChangeEvent,
+  type FormEvent,
+  type KeyboardEvent,
+} from "react";
 import { useRouter } from "next/navigation";
 import UserDashboardDesigns from "../index/userDashboardDesign/UserDashboardDesign";
 
+// --------------------------------------------------
+// Type definitions
+// --------------------------------------------------
 
-// --- Type definitions ---
 interface User {
   fullName: string;
   address: string;
@@ -23,70 +32,241 @@ interface BookingData {
   email: string;
 }
 
+interface Store {
+  _id: string;
+  businessName: string;
+  storeName: string;
+  slug: string;
+  status: string;
+}
+
+interface StoreApiResponse {
+  success?: boolean;
+  message?: string;
+  stores?: Store[];
+  store?: Store;
+}
+
+// --------------------------------------------------
+// API configuration
+// --------------------------------------------------
+
+const API_URL =
+  process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, "") || "";
+
+const STORES_URL = API_URL ? `${API_URL}/stores` : "";
+
 const Dashboard = () => {
+  const router = useRouter();
+
   const [user, setUser] = useState<User | null>(null);
+  const [publishedStore, setPublishedStore] = useState<Store | null>(null);
+  const [storesLoading, setStoresLoading] = useState(true);
+
   const [showPartnerForm, setShowPartnerForm] = useState(false);
   const [showSubscribeForm, setShowSubscribeForm] = useState(false);
   const [showBookingForm, setShowBookingForm] = useState(false);
+
   const [websiteType, setWebsiteType] = useState("");
+
   const [bookingData, setBookingData] = useState<BookingData>({
     service: "",
     name: "",
     email: "",
   });
-  const [partnerData, setPartnerData] = useState<PartnerData>({ company: "", email: "" });
+
+  const [partnerData, setPartnerData] = useState<PartnerData>({
+    company: "",
+    email: "",
+  });
+
   const [subscribeEmail, setSubscribeEmail] = useState("");
 
-  const router = useRouter();
+  // --------------------------------------------------
+  // Fetch user profile and published stores
+  // --------------------------------------------------
 
-  // --- Fetch user profile ---
   useEffect(() => {
-    const fetchUser = async () => {
+    let cancelled = false;
+
+    const fetchDashboardData = async () => {
+      const token = localStorage.getItem("olatinnToken");
+
+      if (!token) {
+        router.push("/signin");
+        return;
+      }
+
+      if (!API_URL) {
+        console.error("NEXT_PUBLIC_API_URL is not configured.");
+        setStoresLoading(false);
+        return;
+      }
+
+      // Fetch the existing user profile.
+try {
+    const response = await fetch(`${API_URL}/profile/user`, {
+        method: "GET",
+        headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+        },
+        cache: "no-store",
+    });
+
+    if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+            localStorage.removeItem("olatinnToken");
+            router.push("/signin");
+            return;
+        }
+
+        throw new Error(
+            `Failed to load user profile. HTTP ${response.status}`
+        );
+    }
+
+    const data = await response.json();
+
+if (cancelled) return;
+
+// GET /profile/user returns the UserProfile document directly.
+const profile = {
+    ...data,
+    email: data.user?.email ?? "",
+    fullName: data.fullName ?? "",
+    age: data.age ?? null,
+    address: data.address ?? "",
+};
+
+setUser(profile as User);
+} catch (error) {
+    if (!cancelled) {
+        console.error("Failed to fetch user profile:", error);
+    }
+
+    return;
+}
+
+      // Fetch the merchant's stores separately.
+      // A store API failure must not prevent the user profile loading.
       try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/profile/user`, {
+        const response = await fetch(STORES_URL, {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("olatinnToken")}`,
+            Authorization: `Bearer ${token}`,
           },
+          cache: "no-store",
         });
 
-        if (res.ok) {
-          const data: User = await res.json();
-          setUser(data);
-        } else {
-          router.push("/signin");
+        if (!response.ok) {
+          throw new Error(
+            `Unable to load stores. HTTP ${response.status}`
+          );
         }
+
+        const data: StoreApiResponse = await response.json();
+
+        if (cancelled) return;
+
+        // Prefer the stores array returned by the multi-store endpoint.
+        const stores = Array.isArray(data.stores)
+          ? data.stores
+          : data.store
+            ? [data.store]
+            : [];
+
+        // Open the first published store.
+        const firstPublishedStore = stores.find(
+          (store) =>
+            store.status?.toLowerCase() === "published" &&
+            Boolean(store.slug)
+        );
+
+        setPublishedStore(firstPublishedStore ?? null);
       } catch (error) {
-        console.error("Failed to fetch user:", error);
-        router.push("/signin");
+        if (!cancelled) {
+          console.error("Failed to fetch stores:", error);
+          setPublishedStore(null);
+        }
+      } finally {
+        if (!cancelled) {
+          setStoresLoading(false);
+        }
       }
     };
 
-    fetchUser();
+    fetchDashboardData();
+
+    return () => {
+      cancelled = true;
+    };
   }, [router]);
 
-  // --- Logout handler ---
-  const handleLogout = async () => {
-    try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/signout`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-      });
-      if (res.ok) {
-        localStorage.removeItem("olatinnToken");
-        router.push("/");
-      }
-    } catch (error) {
-      console.error("Logout failed:", error);
+  // --------------------------------------------------
+  // My Stores navigation
+  // --------------------------------------------------
+
+  const handleMyStoresClick = () => {
+    if (storesLoading) return;
+
+    if (publishedStore?.slug) {
+      router.push(
+        `/store/${encodeURIComponent(publishedStore.slug)}`
+      );
+    } else {
+      // No published store yet. Open the management dashboard.
+      router.push("/store-front/dashboard");
     }
   };
 
-  // --- Partner Form ---
-  const handlePartnerSubmit = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  const handleCardKeyDown = (
+    event: KeyboardEvent<HTMLDivElement>,
+    action: () => void
+  ) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      action();
+    }
+  };
+
+  // --------------------------------------------------
+  // Logout handler
+  // --------------------------------------------------
+
+  const handleLogout = async () => {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/partners`, {
+      const res = await fetch(`${API_URL}/auth/signout`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (res.ok) {
+        localStorage.removeItem("olatinnToken");
+        router.push("/");
+      } else {
+        alert("Logout failed. Please try again.");
+      }
+    } catch (error) {
+      console.error("Logout failed:", error);
+      alert("Unable to contact the server. Please try again.");
+    }
+  };
+
+  // --------------------------------------------------
+  // Partner form
+  // --------------------------------------------------
+
+  const handlePartnerSubmit = async (
+    e: FormEvent<HTMLFormElement>
+  ) => {
+    e.preventDefault();
+
+    try {
+      const res = await fetch(`${API_URL}/partners`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -94,25 +274,33 @@ const Dashboard = () => {
         },
         body: JSON.stringify(partnerData),
       });
+
+      const data = await res.json();
+
       if (res.ok) {
         alert("Partner form submitted successfully!");
         setPartnerData({ company: "", email: "" });
         setShowPartnerForm(false);
       } else {
-        const data = await res.json();
-        alert(data.message || "Partner submission failed");
+        alert(data.message || "Partner submission failed.");
       }
     } catch (error) {
-      console.error(error);
-      alert("Server error while submitting partner form");
+      console.error("Partner submission failed:", error);
+      alert("Server error while submitting partner form.");
     }
   };
 
-  // --- Subscribe Form ---
-  const handleSubscribeSubmit = async (e: FormEvent<HTMLFormElement>) => {
+  // --------------------------------------------------
+  // Subscribe form
+  // --------------------------------------------------
+
+  const handleSubscribeSubmit = async (
+    e: FormEvent<HTMLFormElement>
+  ) => {
     e.preventDefault();
+
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/subscribers/subscribe`, {
+      const res = await fetch(`${API_URL}/subscribers/subscribe`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -120,25 +308,33 @@ const Dashboard = () => {
         },
         body: JSON.stringify({ email: subscribeEmail }),
       });
+
+      const data = await res.json();
+
       if (res.ok) {
         alert("Subscribed successfully!");
         setSubscribeEmail("");
         setShowSubscribeForm(false);
       } else {
-        const data = await res.json();
-        alert(data.message || "Subscription failed");
+        alert(data.message || "Subscription failed.");
       }
     } catch (error) {
-      console.error(error);
-      alert("Server error while subscribing");
+      console.error("Subscription failed:", error);
+      alert("Server error while subscribing.");
     }
   };
 
-  // --- Booking Form ---
-  const handleBookingSubmit = async (e: FormEvent<HTMLFormElement>) => {
+  // --------------------------------------------------
+  // Booking form
+  // --------------------------------------------------
+
+  const handleBookingSubmit = async (
+    e: FormEvent<HTMLFormElement>
+  ) => {
     e.preventDefault();
+
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/bookings/booking`, {
+      const res = await fetch(`${API_URL}/bookings/booking`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -146,28 +342,46 @@ const Dashboard = () => {
         },
         body: JSON.stringify({
           ...bookingData,
-          service: bookingData.service === "Website" ? websiteType : bookingData.service,
+          service:
+            bookingData.service === "Website"
+              ? websiteType
+              : bookingData.service,
         }),
       });
+
+      const data = await res.json();
+
       if (res.ok) {
         alert("Booking submitted successfully!");
-        setBookingData({ service: "", name: "", email: "" });
+        setBookingData({
+          service: "",
+          name: "",
+          email: "",
+        });
         setWebsiteType("");
         setShowBookingForm(false);
       } else {
-        const data = await res.json();
-        alert(data.message || "Booking failed");
+        alert(data.message || "Booking failed.");
       }
     } catch (error) {
-      console.error(error);
-      alert("Server error while submitting booking");
+      console.error("Booking submission failed:", error);
+      alert("Server error while submitting booking.");
     }
   };
 
+  // --------------------------------------------------
+  // Display helpers
+  // --------------------------------------------------
+
   if (!user) return null;
 
-  const userInitial = user.fullName ? user.fullName[0].toUpperCase() : "?";
-  const firstName = user.fullName ? user.fullName.split(" ")[0] : "User";
+  const userInitial = user.fullName
+    ? user.fullName[0].toUpperCase()
+    : "?";
+
+  const firstName = user.fullName
+    ? user.fullName.split(" ")[0]
+    : "User";
 
   const websiteOptions = [
     "E-commerce",
@@ -180,18 +394,28 @@ const Dashboard = () => {
     "Government",
   ];
 
+  // --------------------------------------------------
+  // Dashboard UI
+  // --------------------------------------------------
+
   return (
     <div className="min-h-screen bg-gray-50 p-6 mt-18">
       <div className="max-w-5xl mx-auto">
+
         {/* Header */}
-        <div className="flex justify-between items-center mb-8">
+        <div className="flex justify-between items-center mb-8 gap-4">
           <div>
             <h1 className="text-4xl font-bold text-[#000271]">
-              Welcome To OLATINN, <span className="text-[#17acdd]">{firstName}</span>
+              Welcome To OLATINN,{" "}
+              <span className="text-[#17acdd]">{firstName}</span>
             </h1>
-            <p className="text-gray-600 mt-2 text-lg">Our creative hub for business enhancement</p>
+            <p className="text-gray-600 mt-2 text-lg">
+              Our creative hub for business enhancement
+            </p>
           </div>
+
           <button
+            type="button"
             onClick={handleLogout}
             className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-500 transition cursor-pointer"
           >
@@ -204,6 +428,7 @@ const Dashboard = () => {
           <div className="flex items-center justify-center w-24 h-24 bg-[#17acdd] text-white text-5xl font-bold rounded-full">
             {userInitial}
           </div>
+
           <div>
             <p className="text-xl font-semibold">{user.fullName}</p>
             <p className="text-gray-600">Address: {user.address}</p>
@@ -213,168 +438,249 @@ const Dashboard = () => {
 
         {/* Action Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+          {/* Become A Partner */}
           <div
             onClick={() => setShowPartnerForm(!showPartnerForm)}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) =>
+              handleCardKeyDown(e, () =>
+                setShowPartnerForm(!showPartnerForm)
+              )
+            }
             className="bg-[#000271] text-white rounded-2xl p-6 shadow-lg cursor-pointer hover:bg-[#17acdd] transition"
           >
             <h2 className="text-xl font-bold">Become A Partner</h2>
-            <p className="mt-2 text-sm">Click to join our partner program.</p>
+            <p className="mt-2 text-sm">
+              Click to join our partner program.
+            </p>
           </div>
 
+          {/* Subscribe */}
           <div
             onClick={() => setShowSubscribeForm(!showSubscribeForm)}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) =>
+              handleCardKeyDown(e, () =>
+                setShowSubscribeForm(!showSubscribeForm)
+              )
+            }
             className="bg-[#17acdd] text-white rounded-2xl p-6 shadow-lg cursor-pointer hover:bg-[#000271] transition"
           >
             <h2 className="text-xl font-bold">Subscribe</h2>
-            <p className="mt-2 text-sm">Get frequent updates and stay connected.</p>
+            <p className="mt-2 text-sm">
+              Get frequent updates and stay connected.
+            </p>
           </div>
 
+          {/* Booking */}
           <div
             onClick={() => setShowBookingForm(!showBookingForm)}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) =>
+              handleCardKeyDown(e, () =>
+                setShowBookingForm(!showBookingForm)
+              )
+            }
             className="bg-[#5adfe8] text-white rounded-2xl p-6 shadow-lg cursor-pointer hover:bg-[#17acdd] transition"
           >
             <h2 className="text-xl font-bold">Booking</h2>
-            <p className="mt-2 text-sm">Access your booking dashboard and schedule services.</p>
+            <p className="mt-2 text-sm">
+              Access your booking dashboard and schedule services.
+            </p>
           </div>
 
-          {/* Store Front Merchant Card */}
-{/* Build Your Store Card */}
-<div
-  onClick={() => router.push("/store-front/setup")}
-  role="button"
-  tabIndex={0}
-  onKeyDown={(e) => {
-    if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault();
-      router.push("/store-front/setup");
-    }
-  }}
-  className="bg-gradient-to-br from-[#000271] via-[#171b91] to-[#17acdd] text-white rounded-2xl p-6 shadow-lg cursor-pointer hover:shadow-xl hover:scale-[1.02] transition duration-300"
->
-  <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-white/20 mb-4">
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="27"
-      height="27"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M3 10h18" />
-      <path d="M5 10V20H19V10" />
-      <path d="M3 10L5 4H19L21 10" />
-      <path d="M9 20V14H15V20" />
-    </svg>
-  </div>
+          {/* Build Your Store */}
+          <div
+            onClick={() => router.push("/store-front/setup")}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) =>
+              handleCardKeyDown(e, () =>
+                router.push("/store-front/setup")
+              )
+            }
+            className="bg-gradient-to-br from-[#000271] via-[#171b91] to-[#17acdd] text-white rounded-2xl p-6 shadow-lg cursor-pointer hover:shadow-xl hover:scale-[1.02] transition duration-300"
+          >
+            <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-white/20 mb-4">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="27"
+                height="27"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M3 10h18" />
+                <path d="M5 10V20H19V10" />
+                <path d="M3 10L5 4H19L21 10" />
+                <path d="M9 20V14H15V20" />
+              </svg>
+            </div>
 
-  <h2 className="text-xl font-bold">Build Your Store</h2>
+            <h2 className="text-xl font-bold">Build Your Store</h2>
+            <p className="mt-2 text-sm text-white/90 leading-relaxed">
+              Create your online storefront, customize your brand, and
+              showcase your products to customers.
+            </p>
+            <div className="mt-5 flex items-center gap-2 font-semibold text-sm">
+              Get Started <span aria-hidden="true">→</span>
+            </div>
+          </div>
 
-  <p className="mt-2 text-sm text-white/90 leading-relaxed">
-    Create your online storefront, customize your brand, and showcase
-    your products to customers.
-  </p>
+          {/* My Stores: opens the actual published storefront */}
+          <div
+            onClick={handleMyStoresClick}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) =>
+              handleCardKeyDown(e, handleMyStoresClick)
+            }
+            aria-label={
+              storesLoading
+                ? "Loading your stores"
+                : publishedStore
+                  ? `View published store ${publishedStore.storeName}`
+                  : "Manage your stores"
+            }
+            className="bg-white border border-gray-200 text-[#000271] rounded-2xl p-6 shadow-lg cursor-pointer hover:shadow-xl hover:scale-[1.02] transition duration-300"
+          >
+            <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-[#17acdd]/10 text-[#17acdd] mb-4">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="27"
+                height="27"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <rect x="3" y="3" width="8" height="8" rx="1.5" />
+                <rect x="13" y="3" width="8" height="8" rx="1.5" />
+                <rect x="3" y="13" width="8" height="8" rx="1.5" />
+                <rect x="13" y="13" width="8" height="8" rx="1.5" />
+              </svg>
+            </div>
 
-  <div className="mt-5 flex items-center gap-2 font-semibold text-sm">
-    Get Started <span aria-hidden="true">→</span>
-  </div>
-</div>
+            <h2 className="text-xl font-bold">My Stores</h2>
 
-{/* My Stores Card */}
-<div
-  onClick={() => router.push("/store-front/my-stores")}
-  role="button"
-  tabIndex={0}
-  onKeyDown={(e) => {
-    if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault();
-      router.push("/store-front/my-stores");
-    }
-  }}
-  className="bg-white border border-gray-200 text-[#000271] rounded-2xl p-6 shadow-lg cursor-pointer hover:shadow-xl hover:scale-[1.02] transition duration-300"
->
-  <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-[#17acdd]/10 text-[#17acdd] mb-4">
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="27"
-      height="27"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <rect x="3" y="3" width="8" height="8" rx="1.5" />
-      <rect x="13" y="3" width="8" height="8" rx="1.5" />
-      <rect x="3" y="13" width="8" height="8" rx="1.5" />
-      <rect x="13" y="13" width="8" height="8" rx="1.5" />
-    </svg>
-  </div>
+            <p className="mt-2 text-sm text-gray-600 leading-relaxed">
+              {storesLoading
+                ? "Loading your storefronts..."
+                : publishedStore
+                  ? `Open your published store: ${publishedStore.storeName}.`
+                  : "You have no published store yet. Visit your Store Front dashboard to manage or publish a store."}
+            </p>
 
-  <h2 className="text-xl font-bold">My Stores</h2>
+            <div className="mt-5 flex items-center gap-2 font-semibold text-sm text-[#17acdd]">
+              {storesLoading
+                ? "Please wait..."
+                : publishedStore
+                  ? "View Published Store"
+                  : "Manage Stores"}
+              <span aria-hidden="true">→</span>
+            </div>
+          </div>
 
-  <p className="mt-2 text-sm text-gray-600 leading-relaxed">
-    View your existing storefronts, continue unfinished setups, and
-    manage your online businesses in one place.
-  </p>
+          {/* My Store Front Dashboard */}
+          <div
+            onClick={() => router.push("/store-front/dashboard")}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) =>
+              handleCardKeyDown(e, () =>
+                router.push("/store-front/dashboard")
+              )
+            }
+            className="bg-white border border-gray-200 text-[#000271] rounded-2xl p-6 shadow-lg cursor-pointer hover:shadow-xl hover:scale-[1.02] transition duration-300"
+          >
+            <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-[#17acdd]/10 text-[#17acdd] mb-4">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="27"
+                height="27"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <rect x="3" y="3" width="8" height="8" rx="1.5" />
+                <rect x="13" y="3" width="8" height="8" rx="1.5" />
+                <rect x="3" y="13" width="8" height="8" rx="1.5" />
+                <rect x="13" y="13" width="8" height="8" rx="1.5" />
+              </svg>
+            </div>
 
-  <div className="mt-5 flex items-center gap-2 font-semibold text-sm text-[#17acdd]">
-    Manage Stores <span aria-hidden="true">→</span>
-  </div>
-</div>
+            <h2 className="text-xl font-bold">
+              My Store Front Dashboard
+            </h2>
+            <p className="mt-2 text-sm text-gray-600 leading-relaxed">
+              Manage your storefronts, publish updates, and manage your
+              online presence.
+            </p>
+            <div className="mt-5 flex items-center gap-2 font-semibold text-sm text-[#17acdd]">
+              Manage Stores <span aria-hidden="true">→</span>
+            </div>
+          </div>
 
-{/* Premium Plans Card */}
-<div
-  onClick={() => router.push("/store-front/plans")}
-  role="button"
-  tabIndex={0}
-  onKeyDown={(e) => {
-    if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault();
-      router.push("/store-front/plans");
-    }
-  }}
-  className="bg-gradient-to-br from-[#5adfe8] to-[#17acdd] text-[#000271] rounded-2xl p-6 shadow-lg cursor-pointer hover:shadow-xl hover:scale-[1.02] transition duration-300"
->
-  <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-white/40 mb-4">
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="27"
-      height="27"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="m12 3 2.7 5.5 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1-4.4-4.3 6.1-.9L12 3Z" />
-    </svg>
-  </div>
+          {/* Premium Plans */}
+          <div
+            onClick={() => router.push("/store-front/plans")}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) =>
+              handleCardKeyDown(e, () =>
+                router.push("/store-front/plans")
+              )
+            }
+            className="bg-gradient-to-br from-[#5adfe8] to-[#17acdd] text-[#000271] rounded-2xl p-6 shadow-lg cursor-pointer hover:shadow-xl hover:scale-[1.02] transition duration-300"
+          >
+            <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-white/40 mb-4">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="27"
+                height="27"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <path d="m12 3 2.7 5.5 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1-4.4-4.3 6.1-.9L12 3Z" />
+              </svg>
+            </div>
 
-  <h2 className="text-xl font-bold">Upgrade to Premium</h2>
-
-  <p className="mt-2 text-sm leading-relaxed">
-    Unlock more storefronts, higher product limits, and additional
-    tools as your business grows.
-  </p>
-
-  <div className="mt-5 flex items-center gap-2 font-semibold text-sm">
-    Explore Plans <span aria-hidden="true">→</span>
-  </div>
-</div>
+            <h2 className="text-xl font-bold">Upgrade to Premium</h2>
+            <p className="mt-2 text-sm leading-relaxed">
+              Unlock more storefronts, higher product limits, and
+              additional tools as your business grows.
+            </p>
+            <div className="mt-5 flex items-center gap-2 font-semibold text-sm">
+              Explore Plans <span aria-hidden="true">→</span>
+            </div>
+          </div>
         </div>
 
         {/* Partner Form */}
         {showPartnerForm && (
           <div className="mt-6 bg-white p-6 rounded-xl shadow-lg">
             <h3 className="text-lg font-semibold mb-4">Partner Form</h3>
+
             <form onSubmit={handlePartnerSubmit}>
               <input
                 type="text"
@@ -382,21 +688,32 @@ const Dashboard = () => {
                 required
                 value={partnerData.company}
                 onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                  setPartnerData({ ...partnerData, company: e.target.value })
+                  setPartnerData({
+                    ...partnerData,
+                    company: e.target.value,
+                  })
                 }
                 className="w-full p-3 mb-4 border rounded-lg"
               />
+
               <input
                 type="email"
                 placeholder="Business Email"
                 required
                 value={partnerData.email}
                 onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                  setPartnerData({ ...partnerData, email: e.target.value })
+                  setPartnerData({
+                    ...partnerData,
+                    email: e.target.value,
+                  })
                 }
                 className="w-full p-3 mb-4 border rounded-lg"
               />
-              <button className="bg-[#000271] text-white px-6 py-2 rounded-lg hover:bg-[#17acdd]">
+
+              <button
+                type="submit"
+                className="bg-[#000271] text-white px-6 py-2 rounded-lg hover:bg-[#17acdd]"
+              >
                 Submit
               </button>
             </form>
@@ -406,17 +723,26 @@ const Dashboard = () => {
         {/* Subscribe Form */}
         {showSubscribeForm && (
           <div className="mt-6 bg-white p-6 rounded-xl shadow-lg">
-            <h3 className="text-lg font-semibold mb-4">Subscribe Form</h3>
+            <h3 className="text-lg font-semibold mb-4">
+              Subscribe Form
+            </h3>
+
             <form onSubmit={handleSubscribeSubmit}>
               <input
                 type="email"
                 placeholder="Your Email"
                 required
                 value={subscribeEmail}
-                onChange={(e: ChangeEvent<HTMLInputElement>) => setSubscribeEmail(e.target.value)}
+                onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                  setSubscribeEmail(e.target.value)
+                }
                 className="w-full p-3 mb-4 border rounded-lg"
               />
-              <button className="bg-[#17acdd] text-white px-6 py-2 rounded-lg hover:bg-[#000271]">
+
+              <button
+                type="submit"
+                className="bg-[#17acdd] text-white px-6 py-2 rounded-lg hover:bg-[#000271]"
+              >
                 Subscribe
               </button>
             </form>
@@ -427,12 +753,16 @@ const Dashboard = () => {
         {showBookingForm && (
           <div className="mt-6 bg-white p-6 rounded-xl shadow-lg">
             <h3 className="text-lg font-semibold mb-4">Booking Form</h3>
+
             <form onSubmit={handleBookingSubmit}>
               <select
                 required
                 value={bookingData.service}
                 onChange={(e: ChangeEvent<HTMLSelectElement>) =>
-                  setBookingData({ ...bookingData, service: e.target.value })
+                  setBookingData({
+                    ...bookingData,
+                    service: e.target.value,
+                  })
                 }
                 className="w-full p-3 mb-4 border rounded-lg"
               >
@@ -441,7 +771,9 @@ const Dashboard = () => {
                 <option value="Frontend">Frontend</option>
                 <option value="Backend">Backend</option>
                 <option value="Website">Website (All Types)</option>
-                <option value="Static HTML with DOM manipulation">Static HTML</option>
+                <option value="Static HTML with DOM manipulation">
+                  Static HTML
+                </option>
                 <option value="Graphic Design">Graphic Design</option>
                 <option value="Product Design">Product Design</option>
                 <option value="Data Analytics">Data Analytics</option>
@@ -451,7 +783,9 @@ const Dashboard = () => {
                 <select
                   required
                   value={websiteType}
-                  onChange={(e: ChangeEvent<HTMLSelectElement>) => setWebsiteType(e.target.value)}
+                  onChange={(e: ChangeEvent<HTMLSelectElement>) =>
+                    setWebsiteType(e.target.value)
+                  }
                   className="w-full p-3 mb-4 border rounded-lg"
                 >
                   <option value="">Select Website Type</option>
@@ -469,7 +803,10 @@ const Dashboard = () => {
                 required
                 value={bookingData.name}
                 onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                  setBookingData({ ...bookingData, name: e.target.value })
+                  setBookingData({
+                    ...bookingData,
+                    name: e.target.value,
+                  })
                 }
                 className="w-full p-3 mb-4 border rounded-lg"
               />
@@ -480,7 +817,10 @@ const Dashboard = () => {
                 required
                 value={bookingData.email}
                 onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                  setBookingData({ ...bookingData, email: e.target.value })
+                  setBookingData({
+                    ...bookingData,
+                    email: e.target.value,
+                  })
                 }
                 className="w-full p-3 mb-4 border rounded-lg"
               />
@@ -495,10 +835,10 @@ const Dashboard = () => {
           </div>
         )}
       </div>
+
       <div className="mt-10">
         <UserDashboardDesigns />
       </div>
-      
     </div>
   );
 };

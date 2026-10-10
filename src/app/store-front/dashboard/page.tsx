@@ -1,8 +1,17 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import {
+  type FormEvent,
+  useCallback,
+  useEffect,
+  useState,
+} from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+
+const API_URL =
+  process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, "") || "";
+
+const STORES_URL = API_URL ? `${API_URL}/stores` : "";
 
 type StoreTheme = "modern" | "minimal" | "boutique";
 
@@ -14,95 +23,108 @@ interface Store {
   category: string;
   description?: string;
   logoUrl?: string;
-  primaryColor?: string;
-  secondaryColor?: string;
-  theme?: StoreTheme;
-  status: "draft" | "published";
-  publishedAt?: string | null;
+  primaryColor: string;
+  secondaryColor: string;
+  theme: StoreTheme;
+  status?: "draft" | "published" | string;
+  publishedAt?: string;
   createdAt?: string;
+  updatedAt?: string;
+}
+
+interface Entitlements {
+  maxStores?: number;
+  maxProductsPerStore?: number;
+  themes?: StoreTheme[];
+  analyticsLevel?: string;
+  marketing?: boolean;
+}
+
+interface Plan {
+  key?: string;
+  name?: string;
+  maxStores?: number;
 }
 
 interface StoreResponse {
   success?: boolean;
   message?: string;
   store?: Store;
+  stores?: Store[];
+  count?: number;
+  plan?: Plan;
+  entitlements?: Entitlements;
 }
 
-interface ThemeStyle {
-  pageBackground: string;
-  headerBackground: string;
-  cardBackground: string;
-  textColor: string;
-  mutedColor: string;
-  borderColor: string;
-  heroBackground: string;
-  heroText: string;
-  heroMuted: string;
-  accentColor: string;
-  radius: string;
-  fontFamily: string;
+interface EditForm {
+  businessName: string;
+  storeName: string;
+  slug: string;
+  category: string;
+  description: string;
+  logoUrl: string;
+  primaryColor: string;
+  secondaryColor: string;
+  theme: StoreTheme;
 }
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, "") || "";
-const STORES_URL = API_URL ? `${API_URL}/stores` : "";
-
-const getThemeStyle = (
-  theme: StoreTheme,
-  primaryColor: string,
-  secondaryColor: string
-): ThemeStyle => {
-  const themes: Record<StoreTheme, ThemeStyle> = {
-    modern: {
-      pageBackground: "#f5f8fc",
-      headerBackground: "#ffffff",
-      cardBackground: "#ffffff",
-      textColor: "#0f172a",
-      mutedColor: "#64748b",
-      borderColor: "#e2e8f0",
-      heroBackground: `linear-gradient(125deg, ${primaryColor}, ${secondaryColor})`,
-      heroText: "#ffffff",
-      heroMuted: "#e0f2fe",
-      accentColor: secondaryColor,
-      radius: "1.5rem",
-      fontFamily: "inherit",
-    },
-
-    minimal: {
-      pageBackground: "#f8fafc",
-      headerBackground: "#ffffff",
-      cardBackground: "#ffffff",
-      textColor: "#1e293b",
-      mutedColor: "#64748b",
-      borderColor: "#e2e8f0",
-      heroBackground: "#ffffff",
-      heroText: "#1e293b",
-      heroMuted: "#64748b",
-      accentColor: primaryColor,
-      radius: "0.75rem",
-      fontFamily: "inherit",
-    },
-
-    boutique: {
-      pageBackground: "#f7efe5",
-      headerBackground: "#fffaf4",
-      cardBackground: "#fffaf4",
-      textColor: "#3d3028",
-      mutedColor: "#827166",
-      borderColor: "#e7d8c8",
-      heroBackground: `linear-gradient(135deg, #f0dfcc, #fffaf4)`,
-      heroText: "#3d3028",
-      heroMuted: "#827166",
-      accentColor: secondaryColor,
-      radius: "0.35rem",
-      fontFamily: "Georgia, 'Times New Roman', serif",
-    },
-  };
-
-  return themes[theme];
+const EMPTY_FORM: EditForm = {
+  businessName: "",
+  storeName: "",
+  slug: "",
+  category: "",
+  description: "",
+  logoUrl: "",
+  primaryColor: "#000271",
+  secondaryColor: "#17acdd",
+  theme: "modern",
 };
 
-const formatDate = (date?: string) => {
-  if (!date) return "Not available";
+const THEME_DETAILS: Record<
+  StoreTheme,
+  {
+    name: string;
+    description: string;
+    background: string;
+    text: string;
+  }
+> = {
+  modern: {
+    name: "Modern",
+    description: "Clean layouts and contemporary styling.",
+    background: "#000271",
+    text: "#ffffff",
+  },
+  minimal: {
+    name: "Minimal",
+    description: "A simple, elegant shopping experience.",
+    background: "#f4f6fb",
+    text: "#111827",
+  },
+  boutique: {
+    name: "Boutique",
+    description: "A premium look for distinctive brands.",
+    background: "#f5eee5",
+    text: "#402d24",
+  },
+};
+
+function getToken(): string | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  return localStorage.getItem("olatinnToken");
+}
+
+function getStoreStatus(store: Store): "published" | "draft" {
+  return store.status === "published" ? "published" : "draft";
+}
+
+function formatDate(date?: string): string {
+  if (!date) {
+    return "Not available";
+  }
 
   const parsedDate = new Date(date);
 
@@ -110,93 +132,117 @@ const formatDate = (date?: string) => {
     return "Not available";
   }
 
-  return parsedDate.toLocaleDateString(undefined, {
+  return parsedDate.toLocaleDateString("en-ZA", {
     day: "numeric",
-    month: "long",
+    month: "short",
     year: "numeric",
   });
-};
+}
 
-export default function StoreFrontDashboard() {
-  const router = useRouter();
+function getThemeStyle(theme: StoreTheme) {
+  return THEME_DETAILS[theme] || THEME_DETAILS.modern;
+}
 
-  const [store, setStore] = useState<Store | null>(null);
+export default function StoreFrontDashboardPage() {
+  const [stores, setStores] = useState<Store[]>([]);
   const [loading, setLoading] = useState(true);
-  const [publishing, setPublishing] = useState(false);
-  const [error, setError] = useState("");
+  const [pageError, setPageError] = useState("");
   const [notice, setNotice] = useState("");
-  const [hasToken, setHasToken] = useState(false);
 
-  useEffect(() => {
-    setHasToken(Boolean(localStorage.getItem("olatinnToken")));
-  }, []);
+  const [planName, setPlanName] = useState("Current plan");
+  const [maxStores, setMaxStores] = useState<number | null>(null);
+  const [entitlements, setEntitlements] = useState<Entitlements>({});
 
-  const loadStore = useCallback(async () => {
+  const [busyStoreId, setBusyStoreId] = useState<string | null>(null);
+  const [deletingStoreId, setDeletingStoreId] = useState<string | null>(
+    null
+  );
+
+  const [editingStoreId, setEditingStoreId] = useState<string | null>(
+    null
+  );
+  const [editForm, setEditForm] = useState<EditForm>(EMPTY_FORM);
+  const [savingEdit, setSavingEdit] = useState(false);
+
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const publishedCount = stores.filter(
+    (store) => getStoreStatus(store) === "published"
+  ).length;
+
+  const draftCount = stores.length - publishedCount;
+
+  const remainingStores =
+    maxStores === null || maxStores === -1
+      ? null
+      : Math.max(0, maxStores - stores.length);
+
+  const canCreateStore =
+    maxStores === null ||
+    maxStores === -1 ||
+    stores.length < maxStores;
+
+  const loadStores = useCallback(async () => {
     setLoading(true);
-    setError("");
-    setNotice("");
-
-    const token = localStorage.getItem("olatinnToken");
-
-    if (!token) {
-      setHasToken(false);
-      setError("Please sign in to access your Store Front dashboard.");
-      setLoading(false);
-      return;
-    }
-
-    setHasToken(true);
-
-    if (!STORES_URL) {
-      setError(
-        "The API URL is not configured. Please check NEXT_PUBLIC_API_URL."
-      );
-      setLoading(false);
-      return;
-    }
+    setPageError("");
 
     try {
-      const response = await fetch(`${STORES_URL}/my-store`, {
+      const token = getToken();
+
+      if (!token) {
+        setPageError(
+          "Your session has expired or you are not signed in. Please sign in to manage your stores."
+        );
+        setStores([]);
+        return;
+      }
+
+      if (!STORES_URL) {
+        setPageError(
+          "The API URL is missing. Please configure NEXT_PUBLIC_API_URL in your environment variables."
+        );
+        return;
+      }
+
+      const response = await fetch(STORES_URL, {
         method: "GET",
         headers: {
           Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
         },
         cache: "no-store",
       });
 
-      const data = (await response
-        .json()
-        .catch(() => ({}))) as StoreResponse;
+      const data: StoreResponse = await response.json();
 
-      if (response.status === 404) {
-        setStore(null);
-        setLoading(false);
-        return;
-      }
-
-      if (response.status === 401 || response.status === 403) {
-        setError(
-          data.message ||
-            "Your session could not be verified. Please sign in again if it has expired."
+      if (!response.ok || data.success === false) {
+        throw new Error(
+          data.message || "Unable to load your stores."
         );
-        setLoading(false);
-        return;
       }
 
-      if (!response.ok || !data.store) {
-        setError(data.message || "We couldn't load your store.");
-        setLoading(false);
-        return;
+      setStores(Array.isArray(data.stores) ? data.stores : []);
+
+      if (data.plan?.name) {
+        setPlanName(data.plan.name);
+      } else if (data.plan?.key) {
+        setPlanName(data.plan.key);
       }
 
-      setStore({
-        ...data.store,
-        theme: data.store.theme ?? "modern",
-      });
-    } catch (err) {
-      console.error("Store dashboard loading error:", err);
-      setError(
-        "Unable to connect to Olatinn. Please check your connection and try again."
+      if (typeof data.entitlements?.maxStores === "number") {
+        setMaxStores(data.entitlements.maxStores);
+      } else if (typeof data.plan?.maxStores === "number") {
+        setMaxStores(data.plan.maxStores);
+      } else {
+        setMaxStores(null);
+      }
+
+      setEntitlements(data.entitlements || {});
+    } catch (error) {
+      setPageError(
+        error instanceof Error
+          ? error.message
+          : "Something went wrong while loading your stores."
       );
     } finally {
       setLoading(false);
@@ -204,406 +250,456 @@ export default function StoreFrontDashboard() {
   }, []);
 
   useEffect(() => {
-    void loadStore();
-  }, [loadStore]);
+    void loadStores();
+  }, [loadStores]);
 
-  const handlePublish = async () => {
-    const token = localStorage.getItem("olatinnToken");
+  const handleEditClick = (store: Store) => {
+    setNotice("");
+    setPageError("");
+
+    setEditingStoreId(store._id);
+
+    setEditForm({
+      businessName: store.businessName || "",
+      storeName: store.storeName || "",
+      slug: store.slug || "",
+      category: store.category || "",
+      description: store.description || "",
+      logoUrl: store.logoUrl || "",
+      primaryColor: store.primaryColor || "#000271",
+      secondaryColor: store.secondaryColor || "#17acdd",
+      theme: store.theme || "modern",
+    });
+
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+  };
+
+  const handleEditChange = (
+    field: keyof EditForm,
+    value: string
+  ) => {
+    setEditForm((previous) => ({
+      ...previous,
+      [field]: value,
+    }));
+  };
+
+  const handleCancelEdit = () => {
+    setEditingStoreId(null);
+    setEditForm(EMPTY_FORM);
+  };
+
+  const handleSaveStore = async (
+    event: FormEvent<HTMLFormElement>
+  ) => {
+    event.preventDefault();
+
+    if (!editingStoreId) {
+      return;
+    }
+
+    const token = getToken();
 
     if (!token) {
-      setError("Please sign in before publishing your store.");
+      setPageError("Please sign in again to update your store.");
       return;
     }
 
-    if (!store) {
-      setError("Create your store before publishing it.");
+    if (
+      !editForm.businessName.trim() ||
+      !editForm.storeName.trim() ||
+      !editForm.category.trim()
+    ) {
+      setPageError(
+        "Business name, store name, and category are required."
+      );
       return;
     }
 
-    if (!STORES_URL) {
-      setError("The API URL is not configured.");
-      return;
-    }
-
-    setPublishing(true);
-    setError("");
+    setSavingEdit(true);
+    setPageError("");
     setNotice("");
 
     try {
-      const response = await fetch(`${STORES_URL}/my-store/publish`, {
-        method: "PATCH",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const response = await fetch(
+        `${STORES_URL}/${encodeURIComponent(editingStoreId)}`,
+        {
+          method: "PATCH",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            businessName: editForm.businessName.trim(),
+            storeName: editForm.storeName.trim(),
+            slug: editForm.slug.trim(),
+            category: editForm.category.trim(),
+            description: editForm.description.trim(),
+            logoUrl: editForm.logoUrl.trim(),
+            primaryColor: editForm.primaryColor,
+            secondaryColor: editForm.secondaryColor,
+            theme: editForm.theme,
+          }),
+        }
+      );
 
-      const data = (await response
-        .json()
-        .catch(() => ({}))) as StoreResponse;
+      const data: StoreResponse = await response.json();
 
-      if (response.status === 401 || response.status === 403) {
-        setError(
-          data.message ||
-            "Your session could not be verified. Please sign in again if it has expired."
+      if (!response.ok || data.success === false) {
+        throw new Error(
+          data.message || "Unable to update this store."
         );
-        return;
       }
 
-      if (!response.ok) {
-        setError(data.message || "We couldn't publish your store.");
-        return;
-      }
+      setNotice(data.message || "Store details updated successfully.");
+      setEditingStoreId(null);
+      setEditForm(EMPTY_FORM);
 
-      if (data.store) {
-        setStore({
-          ...data.store,
-          theme: data.store.theme ?? store.theme ?? "modern",
-        });
-      } else {
-        await loadStore();
-      }
-
-      setNotice(data.message || "Your store has been published!");
-    } catch (err) {
-      console.error("Store publishing error:", err);
-      setError("Unable to publish your store. Please try again.");
+      await loadStores();
+    } catch (error) {
+      setPageError(
+        error instanceof Error
+          ? error.message
+          : "Something went wrong while updating your store."
+      );
     } finally {
-      setPublishing(false);
+      setSavingEdit(false);
     }
   };
 
-  const handleSignIn = () => {
-    router.push(
-      `/signin?next=${encodeURIComponent("/store-front/dashboard")}`
-    );
+  const handleTogglePublish = async (store: Store) => {
+    const token = getToken();
+
+    if (!token) {
+      setPageError("Please sign in again to manage your store.");
+      return;
+    }
+
+    const currentlyPublished = getStoreStatus(store) === "published";
+
+    const endpoint = currentlyPublished
+      ? `${STORES_URL}/${encodeURIComponent(store._id)}/unpublish`
+      : `${STORES_URL}/${encodeURIComponent(store._id)}/publish`;
+
+    setBusyStoreId(store._id);
+    setPageError("");
+    setNotice("");
+
+    try {
+      const response = await fetch(endpoint, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      const data: StoreResponse = await response.json();
+
+      if (!response.ok || data.success === false) {
+        throw new Error(
+          data.message ||
+            `Unable to ${
+              currentlyPublished ? "unpublish" : "publish"
+            } this store.`
+        );
+      }
+
+      setNotice(
+        data.message ||
+          (currentlyPublished
+            ? "Your store has been unpublished."
+            : "Your store has been published.")
+      );
+
+      await loadStores();
+    } catch (error) {
+      setPageError(
+        error instanceof Error
+          ? error.message
+          : "Something went wrong while changing the store status."
+      );
+    } finally {
+      setBusyStoreId(null);
+    }
   };
 
-  if (loading) {
-    return (
-      <main className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
-        <div className="text-center">
-          <div className="mx-auto h-12 w-12 animate-spin rounded-full border-4 border-slate-200 border-t-[#17acdd]" />
-          <p className="mt-5 font-medium text-slate-600">
-            Loading your Store Front...
-          </p>
-        </div>
-      </main>
+  const handleDeleteStore = async (store: Store) => {
+    const confirmed = window.confirm(
+      `Are you sure you want to delete "${store.storeName}"? This action cannot be undone.`
     );
-  }
 
-  if (!store && error) {
-    return (
-      <main className="flex min-h-screen items-center justify-center bg-slate-50 px-4 py-12">
-        <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-lg">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-50 text-2xl text-amber-600">
-            !
-          </div>
+    if (!confirmed) {
+      return;
+    }
 
-          <h1 className="mt-5 text-2xl font-bold text-slate-900">
-            We couldn't load your dashboard
-          </h1>
+    const token = getToken();
 
-          <p className="mt-3 text-sm leading-6 text-slate-600">{error}</p>
+    if (!token) {
+      setPageError("Please sign in again to delete your store.");
+      return;
+    }
 
-          <button
-            type="button"
-            onClick={() => void loadStore()}
-            className="mt-6 w-full rounded-xl bg-[#000271] px-5 py-3 font-semibold text-white transition hover:bg-[#17acdd]"
-          >
-            Try again
-          </button>
+    setDeletingStoreId(store._id);
+    setPageError("");
+    setNotice("");
 
-          {!hasToken && (
-            <button
-              type="button"
-              onClick={handleSignIn}
-              className="mt-3 w-full rounded-xl border border-slate-200 px-5 py-3 font-semibold text-slate-700 hover:bg-slate-50"
-            >
-              Sign in
-            </button>
-          )}
+    try {
+      const response = await fetch(
+        `${STORES_URL}/${encodeURIComponent(store._id)}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
 
-          <Link
-            href="/dashboard"
-            className="mt-4 inline-block text-sm font-medium text-slate-500 hover:text-[#000271]"
-          >
-            Back to main dashboard
-          </Link>
-        </div>
-      </main>
-    );
-  }
+      const data: StoreResponse = await response.json();
 
-  if (!store) {
-    return (
-      <main className="flex min-h-screen items-center justify-center bg-slate-50 px-4 py-12">
-        <div className="w-full max-w-lg rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-lg sm:p-10">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-50 text-[#000271]">
-            <svg
-              width="34"
-              height="34"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.7"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-            >
-              <path d="M3 10h18" />
-              <path d="M5 10v10h14V10" />
-              <path d="m3 10 2-6h14l2 6" />
-              <path d="M9 20v-6h6v6" />
-            </svg>
-          </div>
+      if (!response.ok || data.success === false) {
+        throw new Error(
+          data.message || "Unable to delete this store."
+        );
+      }
 
-          <p className="mt-6 text-sm font-bold uppercase tracking-[0.2em] text-[#17acdd]">
-            Olatinn Store Front
-          </p>
+      if (editingStoreId === store._id) {
+        handleCancelEdit();
+      }
 
-          <h1 className="mt-3 text-3xl font-extrabold tracking-tight text-slate-900">
-            Your store starts here.
-          </h1>
+      setNotice(data.message || "Store deleted successfully.");
 
-          <p className="mx-auto mt-4 max-w-sm leading-7 text-slate-600">
-            You haven't created a store yet. Set up your business, choose your
-            store identity, and get ready to showcase your products.
-          </p>
-
-          <Link
-            href="/store-front/setup"
-            className="mt-8 inline-flex w-full items-center justify-center rounded-xl bg-[#000271] px-6 py-4 font-bold text-white transition hover:bg-[#17acdd]"
-          >
-            Build Your Store <span className="ml-2">→</span>
-          </Link>
-
-          <Link
-            href="/dashboard"
-            className="mt-5 inline-block text-sm font-semibold text-slate-500 hover:text-[#000271]"
-          >
-            Back to main dashboard
-          </Link>
-        </div>
-      </main>
-    );
-  }
-
-  const activeTheme: StoreTheme = store.theme ?? "modern";
-  const primaryColor = store.primaryColor || "#000271";
-  const secondaryColor = store.secondaryColor || "#17acdd";
-
-  const style = getThemeStyle(
-    activeTheme,
-    primaryColor,
-    secondaryColor
-  );
-
-  const isPublished = store.status === "published";
-
-  const cardStyle = {
-    backgroundColor: style.cardBackground,
-    borderColor: style.borderColor,
-    borderRadius: style.radius,
-    color: style.textColor,
-    fontFamily: style.fontFamily,
+      await loadStores();
+    } catch (error) {
+      setPageError(
+        error instanceof Error
+          ? error.message
+          : "Something went wrong while deleting your store."
+      );
+    } finally {
+      setDeletingStoreId(null);
+    }
   };
 
-  const primaryButtonStyle = {
-    backgroundColor: primaryColor,
-    color: "#ffffff",
-    borderRadius: style.radius,
+  const handleCopyStoreLink = async (store: Store) => {
+    const storeUrl = `${window.location.origin}/store/${encodeURIComponent(
+      store.slug
+    )}`;
+
+    try {
+      await navigator.clipboard.writeText(storeUrl);
+      setNotice("Store link copied to your clipboard.");
+      setPageError("");
+    } catch {
+      setNotice(`Your store link: ${storeUrl}`);
+      setPageError("");
+    }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("olatinnToken");
+    window.location.href = "/signin";
   };
 
   return (
-    <main
-      className="min-h-screen transition-colors duration-300"
-      style={{
-        backgroundColor: style.pageBackground,
-        color: style.textColor,
-        fontFamily: style.fontFamily,
-      }}
-    >
+    <main className="min-h-screen bg-slate-50 text-slate-900">
       {/* Navigation */}
-      <header
-        className="border-b transition-colors duration-300"
-        style={{
-          backgroundColor: style.headerBackground,
-          borderColor: style.borderColor,
-        }}
-      >
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 py-4 sm:px-8">
-          <Link href="/dashboard" className="flex items-center gap-3">
-            <div
-              className="flex h-11 w-11 items-center justify-center text-lg font-extrabold text-white"
-              style={{
-                backgroundColor: primaryColor,
-                borderRadius: style.radius,
-              }}
-            >
+      <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
+          <Link
+            href="/store-front"
+            className="flex items-center gap-3"
+          >
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#000271] text-xl font-bold text-white">
               O
             </div>
 
             <div>
-              <p
-                className="text-lg font-extrabold tracking-tight"
-                style={{ color: style.textColor }}
-              >
-                OLATINN
+              <p className="text-lg font-extrabold tracking-tight text-[#000271]">
+                Olatinn
               </p>
-              <p
-                className="text-xs font-medium"
-                style={{ color: style.mutedColor }}
-              >
+              <p className="text-xs font-medium text-slate-500">
                 Store Front
               </p>
             </div>
           </Link>
 
-          <div className="flex items-center gap-3">
-            <span
-              className="hidden rounded-full px-3 py-1.5 text-xs font-bold sm:inline-flex"
-              style={{
-                backgroundColor: isPublished ? "#dcfce7" : "#fef3c7",
-                color: isPublished ? "#166534" : "#92400e",
-              }}
+          <nav className="hidden items-center gap-6 md:flex">
+            <Link
+              href="/store-front"
+              className="text-sm font-medium text-slate-600 transition hover:text-[#17acdd]"
             >
-              {isPublished ? "Published" : "Draft"}
-            </span>
+              Store Front Home
+            </Link>
+
+            <Link
+              href="/store-front/setup"
+              className="text-sm font-medium text-slate-600 transition hover:text-[#17acdd]"
+            >
+              Create a Store
+            </Link>
+
+            <Link
+              href="/store-front/plans"
+              className="text-sm font-medium text-slate-600 transition hover:text-[#17acdd]"
+            >
+              Plans
+            </Link>
 
             <Link
               href="/dashboard"
-              className="border px-4 py-2.5 text-sm font-semibold transition hover:opacity-75"
-              style={{
-                borderColor: style.borderColor,
-                borderRadius: style.radius,
-                color: style.textColor,
-              }}
+              className="text-sm font-medium text-slate-600 transition hover:text-[#17acdd]"
             >
               Main Dashboard
             </Link>
-          </div>
+
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-red-200 hover:bg-red-50 hover:text-red-600"
+            >
+              Sign out
+            </button>
+          </nav>
+
+          <button
+            type="button"
+            onClick={() => setMobileMenuOpen((open) => !open)}
+            aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
+            aria-expanded={mobileMenuOpen}
+            className="flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 text-2xl text-[#000271] md:hidden"
+          >
+            {mobileMenuOpen ? "×" : "☰"}
+          </button>
         </div>
-      </header>
 
-      <div className="mx-auto max-w-7xl px-5 py-8 sm:px-8 sm:py-10">
-        {/* Theme-aware welcome banner */}
-        <section
-          className="relative overflow-hidden border p-7 transition-all duration-300 sm:p-10"
-          style={{
-            background: style.heroBackground,
-            color: style.heroText,
-            borderColor: style.borderColor,
-            borderRadius: style.radius,
-          }}
-        >
-          {activeTheme === "modern" && (
-            <>
-              <div
-                className="pointer-events-none absolute -right-10 -top-20 h-64 w-64 rounded-full opacity-20 blur-3xl"
-                style={{ backgroundColor: secondaryColor }}
-              />
-              <div
-                className="pointer-events-none absolute -bottom-24 right-1/3 h-52 w-52 rounded-full opacity-20 blur-3xl"
-                style={{ backgroundColor: "#5adfe8" }}
-              />
-            </>
-          )}
-
-          {activeTheme === "boutique" && (
-            <div
-              className="pointer-events-none absolute right-0 top-0 h-full w-2"
-              style={{ backgroundColor: secondaryColor }}
-            />
-          )}
-
-          <div className="relative z-10 flex flex-col justify-between gap-8 lg:flex-row lg:items-center">
-            <div className="max-w-2xl">
-              <p
-                className="text-sm font-bold uppercase tracking-[0.2em]"
-                style={{
-                  color:
-                    activeTheme === "modern"
-                      ? "#cffafe"
-                      : style.accentColor,
-                }}
+        {mobileMenuOpen && (
+          <nav className="border-t border-slate-200 bg-white px-4 py-4 md:hidden">
+            <div className="mx-auto flex max-w-7xl flex-col gap-4">
+              <Link
+                href="/store-front"
+                onClick={() => setMobileMenuOpen(false)}
+                className="text-sm font-medium text-slate-700"
               >
-                Merchant workspace
-              </p>
-
-              <h1 className="mt-4 text-3xl font-extrabold tracking-tight sm:text-4xl">
-                Welcome to your Store Front
-              </h1>
-
-              <p
-                className="mt-4 max-w-xl leading-7"
-                style={{ color: style.heroMuted }}
-              >
-                Manage your business identity, monitor your store status, and
-                prepare your storefront for customers, all from one place.
-              </p>
-
-              <div
-                className="mt-5 inline-flex items-center gap-2 border px-3 py-2 text-xs font-bold uppercase tracking-wider"
-                style={{
-                  borderColor:
-                    activeTheme === "modern"
-                      ? "rgba(255,255,255,0.3)"
-                      : style.borderColor,
-                  borderRadius: style.radius,
-                  color: style.heroText,
-                }}
-              >
-                <span
-                  className="h-2 w-2 rounded-full"
-                  style={{ backgroundColor: style.accentColor }}
-                />
-                {activeTheme} theme
-              </div>
-            </div>
-
-            <div className="flex shrink-0 flex-wrap gap-3">
-              <button
-                type="button"
-                onClick={() => void loadStore()}
-                className="border px-5 py-3 text-sm font-bold transition hover:opacity-75"
-                style={{
-                  borderColor: style.borderColor,
-                  borderRadius: style.radius,
-                  color: style.heroText,
-                }}
-              >
-                Refresh
-              </button>
+                Store Front Home
+              </Link>
 
               <Link
                 href="/store-front/setup"
-                className="px-5 py-3 text-sm font-bold transition hover:opacity-80"
-                style={{
-                  backgroundColor: style.accentColor,
-                  color: activeTheme === "minimal" ? "#ffffff" : "#ffffff",
-                  borderRadius: style.radius,
-                }}
+                onClick={() => setMobileMenuOpen(false)}
+                className="text-sm font-medium text-slate-700"
               >
-                Store details
+                Create a Store
               </Link>
+
+              <Link
+                href="/store-front/plans"
+                onClick={() => setMobileMenuOpen(false)}
+                className="text-sm font-medium text-slate-700"
+              >
+                Plans
+              </Link>
+
+              <Link
+                href="/dashboard"
+                onClick={() => setMobileMenuOpen(false)}
+                className="text-sm font-medium text-slate-700"
+              >
+                Main Dashboard
+              </Link>
+
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="w-full rounded-xl border border-slate-200 px-4 py-3 text-left text-sm font-semibold text-red-600"
+              >
+                Sign out
+              </button>
             </div>
+          </nav>
+        )}
+      </header>
+
+      {/* Main content */}
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
+        {/* Heading */}
+        <section className="mb-8 flex flex-col justify-between gap-5 md:flex-row md:items-end">
+          <div>
+            <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-cyan-100 bg-cyan-50 px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-[#000271]">
+              <span className="h-2 w-2 rounded-full bg-[#17acdd]" />
+              Merchant workspace
+            </div>
+
+            <h1 className="text-3xl font-extrabold tracking-tight text-[#000271] sm:text-4xl">
+              Your Store Front Dashboard
+            </h1>
+
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600 sm:text-base">
+              Manage your storefronts, update their appearance, publish
+              your stores, and keep track of your merchant account.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap gap-3">
+            <Link
+              href="/store-front/plans"
+              className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-[#000271] transition hover:border-[#17acdd] hover:bg-cyan-50"
+            >
+              View Plans
+            </Link>
+
+            <Link
+              href="/store-front/setup"
+              className={`inline-flex items-center justify-center rounded-xl px-5 py-3 text-sm font-bold text-white shadow-sm transition ${
+                canCreateStore
+                  ? "bg-[#000271] hover:bg-[#17acdd]"
+                  : "cursor-not-allowed bg-slate-400"
+              }`}
+              onClick={(event) => {
+                if (!canCreateStore) {
+                  event.preventDefault();
+                  setNotice(
+                    `Your ${planName} plan has reached its store limit. Upgrade your plan to create another store.`
+                  );
+                }
+              }}
+              aria-disabled={!canCreateStore}
+            >
+              + Create a Store
+            </Link>
           </div>
         </section>
 
-        {/* Notifications */}
-        {error && (
+        {/* Alerts */}
+        {pageError && (
           <div
             role="alert"
-            className="mt-6 flex flex-col gap-3 border border-red-200 bg-red-50 p-4 text-sm text-red-700 sm:flex-row sm:items-center sm:justify-between"
-            style={{ borderRadius: style.radius }}
+            className="mb-6 flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700"
           >
-            <p>{error}</p>
+            <span className="text-lg">!</span>
+            <div className="min-w-0 flex-1">
+              <p className="font-bold">Something needs your attention</p>
+              <p className="mt-1 break-words">{pageError}</p>
+              <button
+                type="button"
+                onClick={() => void loadStores()}
+                className="mt-3 font-bold underline underline-offset-4"
+              >
+                Try again
+              </button>
+            </div>
+
             <button
               type="button"
-              onClick={() => setError("")}
-              className="self-start font-bold underline sm:self-auto"
+              onClick={() => setPageError("")}
+              aria-label="Dismiss error"
+              className="text-lg font-bold"
             >
-              Dismiss
+              ×
             </button>
           </div>
         )}
@@ -611,378 +707,945 @@ export default function StoreFrontDashboard() {
         {notice && (
           <div
             role="status"
-            className="mt-6 border border-emerald-200 bg-emerald-50 p-4 text-sm font-medium text-emerald-800"
-            style={{ borderRadius: style.radius }}
+            className="mb-6 flex items-start justify-between gap-3 rounded-2xl border border-cyan-200 bg-cyan-50 p-4 text-sm text-[#000271]"
           >
-            {notice}
+            <p>{notice}</p>
+
+            <button
+              type="button"
+              onClick={() => setNotice("")}
+              aria-label="Dismiss message"
+              className="font-bold"
+            >
+              ×
+            </button>
           </div>
         )}
 
-        {/* Store overview */}
-        <section className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-3">
-          <div
-            className="border p-6 shadow-sm transition-colors duration-300 lg:col-span-2 sm:p-8"
-            style={cardStyle}
-          >
-            <div className="flex flex-col gap-6 sm:flex-row sm:items-start">
-              <div
-                className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden border"
-                style={{
-                  borderColor: style.borderColor,
-                  borderRadius: style.radius,
-                  backgroundColor: style.pageBackground,
-                }}
-              >
-                {store.logoUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={store.logoUrl}
-                    alt={`${store.storeName} logo`}
-                    className="h-full w-full object-contain"
-                  />
-                ) : (
-                  <span
-                    className="text-3xl font-extrabold"
-                    style={{ color: primaryColor }}
-                  >
-                    {store.storeName.charAt(0).toUpperCase()}
-                  </span>
-                )}
+        {/* Plan summary */}
+        <section className="mb-8 overflow-hidden rounded-3xl bg-[#000271] text-white shadow-sm">
+          <div className="grid gap-6 p-6 sm:p-8 lg:grid-cols-[1.5fr_1fr] lg:items-center">
+            <div>
+              <p className="text-sm font-medium text-cyan-200">
+                Your merchant subscription
+              </p>
+
+              <div className="mt-2 flex flex-wrap items-center gap-3">
+                <h2 className="text-2xl font-extrabold">
+                  {planName}
+                </h2>
+
+                <span className="rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-bold">
+                  Current plan
+                </span>
               </div>
 
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-3">
-                  <h2 className="break-words text-2xl font-extrabold">
-                    {store.storeName}
-                  </h2>
+              <p className="mt-3 max-w-xl text-sm leading-6 text-slate-200">
+                Your subscription determines how many stores you can
+                create and which themes and features are available.
+                Your existing stores remain yours to manage.
+              </p>
 
-                  <span
-                    className="px-3 py-1 text-xs font-bold"
+              <Link
+                href="/store-front/plans"
+                className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-cyan-200 transition hover:text-white"
+              >
+                Explore subscription options
+                <span aria-hidden="true">→</span>
+              </Link>
+            </div>
+
+            <div className="rounded-2xl border border-white/15 bg-white/10 p-5">
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-sm text-slate-200">
+                  Store capacity
+                </span>
+
+                <span className="text-sm font-bold">
+                  {maxStores === -1
+                    ? "Unlimited"
+                    : maxStores === null
+                      ? `${stores.length} created`
+                      : `${stores.length} / ${maxStores}`}
+                </span>
+              </div>
+
+              {maxStores !== null && maxStores !== -1 && (
+                <div
+                  className="mt-4 h-2 overflow-hidden rounded-full bg-white/20"
+                  role="progressbar"
+                  aria-label="Store capacity used"
+                  aria-valuemin={0}
+                  aria-valuemax={Math.max(maxStores, 1)}
+                  aria-valuenow={Math.min(stores.length, maxStores)}
+                >
+                  <div
+                    className="h-full rounded-full bg-[#17acdd] transition-all"
                     style={{
-                      backgroundColor: isPublished ? "#dcfce7" : "#fef3c7",
-                      color: isPublished ? "#166534" : "#92400e",
-                      borderRadius: style.radius,
+                      width: `${
+                        maxStores > 0
+                          ? Math.min(
+                              (stores.length / maxStores) * 100,
+                              100
+                            )
+                          : 0
+                      }%`,
                     }}
+                  />
+                </div>
+              )}
+
+              <p className="mt-3 text-sm text-slate-200">
+                {remainingStores === null
+                  ? "Your plan has unlimited store capacity, or the limit has not been supplied by the server."
+                  : remainingStores > 0
+                    ? `${remainingStores} ${
+                        remainingStores === 1 ? "store" : "stores"
+                      } remaining on your current plan.`
+                    : "You have reached your current store limit."}
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {/* Statistics */}
+        <section className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-slate-500">
+                Total stores
+              </span>
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 text-xl">
+                🏬
+              </span>
+            </div>
+            <p className="mt-4 text-3xl font-extrabold text-[#000271]">
+              {loading ? "..." : stores.length}
+            </p>
+            <p className="mt-1 text-xs text-slate-500">
+              Stores in your account
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-slate-500">
+                Published
+              </span>
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-xl">
+                ✓
+              </span>
+            </div>
+            <p className="mt-4 text-3xl font-extrabold text-emerald-600">
+              {loading ? "..." : publishedCount}
+            </p>
+            <p className="mt-1 text-xs text-slate-500">
+              Live storefronts
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-slate-500">
+                Drafts
+              </span>
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-xl">
+                ✎
+              </span>
+            </div>
+            <p className="mt-4 text-3xl font-extrabold text-amber-600">
+              {loading ? "..." : draftCount}
+            </p>
+            <p className="mt-1 text-xs text-slate-500">
+              Stores not currently published
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-slate-500">
+                Product allowance
+              </span>
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-50 text-xl">
+                📦
+              </span>
+            </div>
+            <p className="mt-4 text-3xl font-extrabold text-[#000271]">
+              {typeof entitlements.maxProductsPerStore === "number"
+                ? entitlements.maxProductsPerStore === -1
+                  ? "∞"
+                  : entitlements.maxProductsPerStore
+                : "—"}
+            </p>
+
+            
+            <p className="mt-1 text-xs text-slate-500">
+              Products per store
+            </p>
+          </div>
+        </section>
+
+        {/* Edit form */}
+        {editingStoreId && (
+          <section
+            id="edit-store-form"
+            className="mb-8 rounded-3xl border border-cyan-200 bg-white p-5 shadow-sm sm:p-8"
+          >
+            <div className="mb-6 flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wider text-[#17acdd]">
+                  Store settings
+                </p>
+
+                <h2 className="mt-1 text-2xl font-extrabold text-[#000271]">
+                  Edit your store
+                </h2>
+
+                <p className="mt-2 text-sm text-slate-500">
+                  Update your business details and storefront appearance.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleCancelEdit}
+                className="self-start rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 sm:self-auto"
+              >
+                Cancel editing
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveStore} className="space-y-6">
+              <div className="grid gap-5 md:grid-cols-2">
+                <div>
+                  <label
+                    htmlFor="businessName"
+                    className="mb-2 block text-sm font-semibold text-slate-700"
                   >
-                    {isPublished ? "Published" : "Draft"}
-                  </span>
+                    Business name *
+                  </label>
+
+                  <input
+                    id="businessName"
+                    name="businessName"
+                    type="text"
+                    required
+                    maxLength={120}
+                    value={editForm.businessName}
+                    onChange={(event) =>
+                      handleEditChange(
+                        "businessName",
+                        event.target.value
+                      )
+                    }
+                    className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-[#17acdd] focus:ring-2 focus:ring-cyan-100"
+                    placeholder="e.g. Olatinn Fashion House"
+                  />
                 </div>
 
-                <p className="mt-2 text-sm" style={{ color: style.mutedColor }}>
-                  {store.businessName}
-                </p>
-
-                <p
-                  className="mt-4 inline-flex px-3 py-1.5 text-sm font-medium"
-                  style={{
-                    backgroundColor: style.pageBackground,
-                    color: style.textColor,
-                    borderRadius: style.radius,
-                  }}
-                >
-                  {store.category}
-                </p>
-
-                {store.description && (
-                  <p
-                    className="mt-4 max-w-2xl whitespace-pre-wrap text-sm leading-7"
-                    style={{ color: style.mutedColor }}
+                <div>
+                  <label
+                    htmlFor="storeName"
+                    className="mb-2 block text-sm font-semibold text-slate-700"
                   >
-                    {store.description}
+                    Store name *
+                  </label>
+
+                  <input
+                    id="storeName"
+                    name="storeName"
+                    type="text"
+                    required
+                    maxLength={120}
+                    value={editForm.storeName}
+                    onChange={(event) =>
+                      handleEditChange(
+                        "storeName",
+                        event.target.value
+                      )
+                    }
+                    className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-[#17acdd] focus:ring-2 focus:ring-cyan-100"
+                    placeholder="Your storefront name"
+                  />
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="slug"
+                    className="mb-2 block text-sm font-semibold text-slate-700"
+                  >
+                    Store URL slug
+                  </label>
+
+                  <input
+                    id="slug"
+                    name="slug"
+                    type="text"
+                    maxLength={100}
+                    value={editForm.slug}
+                    onChange={(event) =>
+                      handleEditChange("slug", event.target.value)
+                    }
+                    className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-[#17acdd] focus:ring-2 focus:ring-cyan-100"
+                    placeholder="my-store"
+                  />
+
+                  <p className="mt-2 break-all text-xs text-slate-500">
+                    Your store address will use this slug.
+                  </p>
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="category"
+                    className="mb-2 block text-sm font-semibold text-slate-700"
+                  >
+                    Business category *
+                  </label>
+
+                  <input
+                    id="category"
+                    name="category"
+                    type="text"
+                    required
+                    maxLength={80}
+                    value={editForm.category}
+                    onChange={(event) =>
+                      handleEditChange(
+                        "category",
+                        event.target.value
+                      )
+                    }
+                    className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-[#17acdd] focus:ring-2 focus:ring-cyan-100"
+                    placeholder="Fashion, electronics, beauty..."
+                  />
+                </div>
+
+                <div className="md:col-span-2">
+                  <label
+                    htmlFor="description"
+                    className="mb-2 block text-sm font-semibold text-slate-700"
+                  >
+                    Store description
+                  </label>
+
+                  <textarea
+                    id="description"
+                    name="description"
+                    rows={4}
+                    maxLength={2000}
+                    value={editForm.description}
+                    onChange={(event) =>
+                      handleEditChange(
+                        "description",
+                        event.target.value
+                      )
+                    }
+                    className="w-full resize-y rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-[#17acdd] focus:ring-2 focus:ring-cyan-100"
+                    placeholder="Tell customers about your business and what makes your store special."
+                  />
+                </div>
+
+                <div className="md:col-span-2">
+                  <label
+                    htmlFor="logoUrl"
+                    className="mb-2 block text-sm font-semibold text-slate-700"
+                  >
+                    Store logo URL
+                  </label>
+
+                  <input
+                    id="logoUrl"
+                    name="logoUrl"
+                    type="url"
+                    value={editForm.logoUrl}
+                    onChange={(event) =>
+                      handleEditChange(
+                        "logoUrl",
+                        event.target.value
+                      )
+                    }
+                    className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-[#17acdd] focus:ring-2 focus:ring-cyan-100"
+                    placeholder="https://example.com/logo.png"
+                  />
+
+                  <p className="mt-2 text-xs text-slate-500">
+                    Enter an image URL. This field does not upload a
+                    file to Cloudinary.
+                  </p>
+                </div>
+              </div>
+
+              <div className="border-t border-slate-100 pt-6">
+                <h3 className="text-lg font-bold text-[#000271]">
+                  Store appearance
+                </h3>
+
+                <p className="mt-1 text-sm text-slate-500">
+                  Choose a theme and customize your brand colors.
+                  Your subscription determines which themes you can use.
+                </p>
+
+                <div className="mt-5 grid gap-4 md:grid-cols-3">
+                  {(
+                    ["modern", "minimal", "boutique"] as StoreTheme[]
+                  ).map((theme) => {
+                    const details = getThemeStyle(theme);
+                    const allowedThemes = entitlements.themes;
+                    const isAllowed =
+                      !allowedThemes ||
+                      allowedThemes.length === 0 ||
+                      allowedThemes.includes(theme);
+
+                    return (
+                      <label
+                        key={theme}
+                        className={`cursor-pointer overflow-hidden rounded-2xl border-2 transition ${
+                          editForm.theme === theme
+                            ? "border-[#17acdd] ring-2 ring-cyan-100"
+                            : "border-slate-200 hover:border-slate-300"
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="theme"
+                          value={theme}
+                          checked={editForm.theme === theme}
+                          onChange={() =>
+                            handleEditChange("theme", theme)
+                          }
+                          className="sr-only"
+                        />
+
+                        <div
+                          className="flex h-24 items-center justify-center"
+                          style={{
+                            backgroundColor: details.background,
+                            color: details.text,
+                          }}
+                        >
+                          <div className="text-center">
+                            <div className="text-lg font-extrabold">
+                              {editForm.storeName || "Your Store"}
+                            </div>
+                            <div className="mt-1 text-xs opacity-75">
+                              Shop the collection
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="p-4">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-bold capitalize text-slate-800">
+                              {details.name}
+                            </span>
+
+                            {editForm.theme === theme && (
+                              <span className="text-sm font-bold text-[#17acdd]">
+                                Selected
+                              </span>
+                            )}
+                          </div>
+
+                          <p className="mt-1 text-xs leading-5 text-slate-500">
+                            {details.description}
+                          </p>
+
+                          {!isAllowed && (
+                            <p className="mt-2 text-xs font-semibold text-amber-700">
+                              May require a plan upgrade
+                            </p>
+                          )}
+                        </div>
+                      </label>
+                    );
+                  })}
+                </div>
+
+                <div className="mt-6 grid gap-5 sm:grid-cols-2">
+                  <div>
+                    <label
+                      htmlFor="primaryColor"
+                      className="mb-2 block text-sm font-semibold text-slate-700"
+                    >
+                      Primary brand color
+                    </label>
+
+                    <div className="flex items-center gap-3">
+                      <input
+                        id="primaryColor"
+                        name="primaryColor"
+                        type="color"
+                        value={editForm.primaryColor}
+                        onChange={(event) =>
+                          handleEditChange(
+                            "primaryColor",
+                            event.target.value
+                          )
+                        }
+                        className="h-12 w-14 cursor-pointer rounded-lg border border-slate-200 bg-white p-1"
+                      />
+
+                      <input
+                        type="text"
+                        aria-label="Primary brand color hex value"
+                        value={editForm.primaryColor}
+                        maxLength={7}
+                        pattern="^#[0-9A-Fa-f]{6}$"
+                        onChange={(event) =>
+                          handleEditChange(
+                            "primaryColor",
+                            event.target.value
+                          )
+                        }
+                        className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm uppercase outline-none focus:border-[#17acdd]"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label
+                      htmlFor="secondaryColor"
+                      className="mb-2 block text-sm font-semibold text-slate-700"
+                    >
+                      Secondary brand color
+                    </label>
+
+                    <div className="flex items-center gap-3">
+                      <input
+                        id="secondaryColor"
+                        name="secondaryColor"
+                        type="color"
+                        value={editForm.secondaryColor}
+                        onChange={(event) =>
+                          handleEditChange(
+                            "secondaryColor",
+                            event.target.value
+                          )
+                        }
+                        className="h-12 w-14 cursor-pointer rounded-lg border border-slate-200 bg-white p-1"
+                      />
+
+                      <input
+                        type="text"
+                        aria-label="Secondary brand color hex value"
+                        value={editForm.secondaryColor}
+                        maxLength={7}
+                        pattern="^#[0-9A-Fa-f]{6}$"
+                        onChange={(event) =>
+                          handleEditChange(
+                            "secondaryColor",
+                            event.target.value
+                          )
+                        }
+                        className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm uppercase outline-none focus:border-[#17acdd]"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-3 border-t border-slate-100 pt-6 sm:flex-row">
+                <button
+                  type="submit"
+                  disabled={savingEdit}
+                  className="inline-flex items-center justify-center rounded-xl bg-[#000271] px-6 py-3 text-sm font-bold text-white transition hover:bg-[#17acdd] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {savingEdit ? "Saving changes..." : "Save Changes"}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleCancelEdit}
+                  disabled={savingEdit}
+                  className="rounded-xl border border-slate-200 px-6 py-3 text-sm font-bold text-slate-600 transition hover:bg-slate-50 disabled:opacity-60"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </section>
+        )}
+
+        {/* Store list heading */}
+        <section className="mb-5 flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+          <div>
+            <h2 className="text-2xl font-extrabold text-[#000271]">
+              My Stores
+            </h2>
+            <p className="mt-1 text-sm text-slate-500">
+              Manage every storefront associated with your account.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => void loadStores()}
+            disabled={loading}
+            className="inline-flex items-center justify-center gap-2 self-start rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-[#17acdd] hover:text-[#000271] disabled:opacity-50 sm:self-auto"
+          >
+            <span aria-hidden="true">↻</span>
+            {loading ? "Refreshing..." : "Refresh stores"}
+          </button>
+        </section>
+
+        {/* Loading state */}
+        {loading && stores.length === 0 && (
+          <section className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+            {[1, 2, 3].map((item) => (
+              <div
+                key={item}
+                className="animate-pulse overflow-hidden rounded-3xl border border-slate-200 bg-white"
+              >
+                <div className="h-36 bg-slate-200" />
+                <div className="space-y-4 p-5">
+                  <div className="h-5 w-2/3 rounded bg-slate-200" />
+                  <div className="h-4 w-1/2 rounded bg-slate-100" />
+                  <div className="h-10 rounded-xl bg-slate-100" />
+                  <div className="h-10 rounded-xl bg-slate-100" />
+                </div>
+              </div>
+            ))}
+          </section>
+        )}
+
+        {/* Empty state */}
+        {!loading && !pageError && stores.length === 0 && (
+          <section className="rounded-3xl border border-dashed border-slate-300 bg-white px-6 py-16 text-center sm:px-12">
+            <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-3xl bg-indigo-50 text-4xl">
+              🏬
+            </div>
+
+            <h3 className="mt-6 text-2xl font-extrabold text-[#000271]">
+              Your storefront journey starts here
+            </h3>
+
+            <p className="mx-auto mt-3 max-w-lg text-sm leading-6 text-slate-500">
+              You have not created a store yet. Set up your first
+              storefront, customize its appearance, and publish it when
+              you are ready to welcome customers.
+            </p>
+
+            <Link
+              href="/store-front/setup"
+              className="mt-7 inline-flex items-center justify-center rounded-xl bg-[#000271] px-6 py-3 text-sm font-bold text-white transition hover:bg-[#17acdd]"
+            >
+              Create Your First Store
+            </Link>
+
+            <p className="mt-4 text-xs text-slate-400">
+              Your available store capacity depends on your current plan.
+            </p>
+          </section>
+        )}
+
+        {/* Store cards */}
+        {!loading && stores.length > 0 && (
+          <section className="grid items-start gap-6 md:grid-cols-2 xl:grid-cols-3">
+            {stores.map((store) => {
+              const theme = getThemeStyle(
+                store.theme || "modern"
+              );
+
+              const isPublished =
+                getStoreStatus(store) === "published";
+
+              const isBusy = busyStoreId === store._id;
+              const isDeleting =
+                deletingStoreId === store._id;
+
+              const storeUrl = `/store/${encodeURIComponent(
+                store.slug
+              )}`;
+
+              return (
+                <article
+                  key={store._id}
+                  className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition duration-200 hover:-translate-y-1 hover:shadow-lg"
+                >
+                  {/* Store preview */}
+                  <div
+                    className="relative flex h-40 items-center justify-center overflow-hidden p-6"
+                    style={{
+                      backgroundColor:
+                        store.primaryColor || theme.background,
+                      color: "#ffffff",
+                    }}
+                  >
+                    <div className="absolute -right-8 -top-10 h-40 w-40 rounded-full border border-white/15" />
+                    <div className="absolute -bottom-16 -left-8 h-40 w-40 rounded-full border border-white/15" />
+
+                    <div className="relative z-10 w-full text-center">
+                      {store.logoUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={store.logoUrl}
+                          alt={`${store.storeName} logo`}
+                          className="mx-auto mb-3 h-12 max-w-40 rounded-lg bg-white/95 object-contain p-1.5"
+                        />
+                      ) : (
+                        <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-white/15 text-xl font-extrabold">
+                          {(store.storeName || "S")
+                            .charAt(0)
+                            .toUpperCase()}
+                        </div>
+                      )}
+
+                      <h3 className="break-words text-xl font-extrabold">
+                        {store.storeName}
+                      </h3>
+
+                      <p className="mt-1 text-xs text-white/80">
+                        {store.category}
+                      </p>
+                    </div>
+
+                    <span
+                      className={`absolute right-4 top-4 rounded-full px-3 py-1 text-xs font-bold ${
+                        isPublished
+                          ? "bg-emerald-400 text-emerald-950"
+                          : "bg-white/90 text-slate-700"
+                      }`}
+                    >
+                      {isPublished ? "Published" : "Draft"}
+                    </span>
+                  </div>
+
+                  {/* Store details */}
+                  <div className="p-5">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="break-words text-xs font-semibold uppercase tracking-wider text-slate-400">
+                          {store.businessName}
+                        </p>
+
+                        <h3 className="mt-1 break-words text-lg font-extrabold text-[#000271]">
+                          {store.storeName}
+                        </h3>
+                      </div>
+
+                      <span className="shrink-0 rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-semibold capitalize text-slate-600">
+                        {store.theme || "modern"}
+                      </span>
+                    </div>
+
+                    <p className="mt-3 line-clamp-3 min-h-[3.75rem] text-sm leading-5 text-slate-500">
+                      {store.description ||
+                        "Add a description to tell customers about your store."}
+                    </p>
+
+                    <div className="mt-4 space-y-2 border-t border-slate-100 pt-4">
+                      <div className="flex items-center justify-between gap-3 text-xs">
+                        <span className="text-slate-500">
+                          Store URL slug
+                        </span>
+                        <span className="max-w-[65%] break-all text-right font-semibold text-slate-700">
+                          /store/{store.slug}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center justify-between gap-3 text-xs">
+                        <span className="text-slate-500">
+                          Created
+                        </span>
+                        <span className="font-semibold text-slate-700">
+                          {formatDate(store.createdAt)}
+                        </span>
+                      </div>
+
+                      {isPublished && store.publishedAt && (
+                        <div className="flex items-center justify-between gap-3 text-xs">
+                          <span className="text-slate-500">
+                            Published
+                          </span>
+                          <span className="font-semibold text-slate-700">
+                            {formatDate(store.publishedAt)}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Main actions */}
+                    <div className="mt-5 grid grid-cols-2 gap-3">
+                      <button
+                        type="button"
+                        onClick={() => handleEditClick(store)}
+                        disabled={isBusy || isDeleting}
+                        className="rounded-xl border border-slate-200 px-3 py-3 text-sm font-bold text-[#000271] transition hover:border-[#17acdd] hover:bg-cyan-50 disabled:opacity-50"
+                      >
+                        Edit Store
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => void handleTogglePublish(store)}
+                        disabled={isBusy || isDeleting}
+                        className={`rounded-xl px-3 py-3 text-sm font-bold text-white transition disabled:cursor-not-allowed disabled:opacity-50 ${
+                          isPublished
+                            ? "bg-amber-500 hover:bg-amber-600"
+                            : "bg-emerald-600 hover:bg-emerald-700"
+                        }`}
+                      >
+                        {isBusy
+                          ? "Please wait..."
+                          : isPublished
+                            ? "Unpublish"
+                            : "Publish"}
+                      </button>
+                    </div>
+
+                    {/* Secondary actions */}
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {isPublished && (
+                        <Link
+                          href={storeUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex-1 rounded-xl bg-cyan-50 px-3 py-2.5 text-center text-xs font-bold text-[#000271] transition hover:bg-cyan-100"
+                        >
+                          View Store ↗
+                        </Link>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={() => void handleCopyStoreLink(store)}
+                        className="flex-1 rounded-xl bg-slate-100 px-3 py-2.5 text-xs font-bold text-slate-700 transition hover:bg-slate-200"
+                      >
+                        Copy Store Link
+                      </button>
+                    </div>
+
+                    {/* Product management */}
+<div className="mt-4 rounded-xl border border-slate-200 bg-white p-4">
+  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <div>
+      <p className="text-sm font-bold text-[#000271]">
+        Product Management
+      </p>
+
+      <p className="mt-1 text-xs leading-5 text-slate-500">
+        Add products, manage prices and stock, and control
+        which products appear in your storefront.
+      </p>
+    </div>
+
+    <div className="flex flex-wrap gap-2">
+      <Link
+        href={`/store-front/products?storeId=${encodeURIComponent(store._id)}`}
+        className="inline-flex items-center justify-center rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-bold text-[#000271] transition hover:border-[#17acdd] hover:bg-cyan-50"
+      >
+        Manage Products
+      </Link>
+
+      <Link
+        href={`/store-front/products/new?storeId=${encodeURIComponent(store._id)}`}
+        className="inline-flex items-center justify-center rounded-xl bg-[#000271] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-[#17acdd]"
+      >
+        + Add Product
+      </Link>
+    </div>
+  </div>
+</div>
+
+                    
+
+                    {/* Delete */}
+                    <div className="mt-4 border-t border-slate-100 pt-4">
+                      <button
+                        type="button"
+                        onClick={() => void handleDeleteStore(store)}
+                        disabled={isBusy || isDeleting}
+                        className="w-full rounded-xl px-3 py-2.5 text-sm font-semibold text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {isDeleting
+                          ? "Deleting store..."
+                          : "Delete Store"}
+                      </button>
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
+          </section>
+        )}
+
+        {/* Subscription feature information */}
+        {!loading && stores.length > 0 && (
+          <section className="mt-10 rounded-3xl border border-slate-200 bg-white p-6 sm:p-8">
+            <div className="flex flex-col justify-between gap-5 md:flex-row md:items-center">
+              <div>
+                <h2 className="text-xl font-extrabold text-[#000271]">
+                  Get more from your storefronts
+                </h2>
+
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
+                  Your current plan controls your store capacity, product
+                  allowance, available themes, analytics, and marketing
+                  features. Review your plan to see which features are
+                  available to your account.
+                </p>
+
+                {entitlements.themes &&
+                  entitlements.themes.length > 0 && (
+                    <p className="mt-3 text-xs text-slate-500">
+                      Available themes:{" "}
+                      <span className="font-semibold capitalize text-slate-700">
+                        {entitlements.themes.join(", ")}
+                      </span>
+                    </p>
+                  )}
+
+                {entitlements.analyticsLevel && (
+                  <p className="mt-2 text-xs text-slate-500">
+                    Analytics level:{" "}
+                    <span className="font-semibold capitalize text-slate-700">
+                      {entitlements.analyticsLevel}
+                    </span>
                   </p>
                 )}
               </div>
+
+              <Link
+                href="/store-front/plans"
+                className="inline-flex shrink-0 items-center justify-center rounded-xl bg-[#000271] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#17acdd]"
+              >
+                Compare Plans
+              </Link>
             </div>
+          </section>
+        )}
 
-            {/* Brand colours */}
-            <div
-              className="mt-8 grid grid-cols-1 gap-4 border-t pt-6 sm:grid-cols-2"
-              style={{ borderColor: style.borderColor }}
-            >
-              <div>
-                <p
-                  className="text-xs font-bold uppercase tracking-wider"
-                  style={{ color: style.mutedColor }}
-                >
-                  Store slug
-                </p>
-                <p className="mt-2 break-all font-semibold">{store.slug}</p>
-              </div>
-
-              <div>
-                <p
-                  className="text-xs font-bold uppercase tracking-wider"
-                  style={{ color: style.mutedColor }}
-                >
-                  Created
-                </p>
-                <p className="mt-2 font-semibold">
-                  {formatDate(store.createdAt)}
-                </p>
-              </div>
-
-              <div>
-                <p
-                  className="text-xs font-bold uppercase tracking-wider"
-                  style={{ color: style.mutedColor }}
-                >
-                  Primary colour
-                </p>
-                <div className="mt-2 flex items-center gap-2">
-                  <span
-                    className="h-6 w-6 border border-black/10"
-                    style={{
-                      backgroundColor: primaryColor,
-                      borderRadius: style.radius,
-                    }}
-                  />
-                  <span className="font-mono text-sm">{primaryColor}</span>
-                </div>
-              </div>
-
-              <div>
-                <p
-                  className="text-xs font-bold uppercase tracking-wider"
-                  style={{ color: style.mutedColor }}
-                >
-                  Secondary colour
-                </p>
-                <div className="mt-2 flex items-center gap-2">
-                  <span
-                    className="h-6 w-6 border border-black/10"
-                    style={{
-                      backgroundColor: secondaryColor,
-                      borderRadius: style.radius,
-                    }}
-                  />
-                  <span className="font-mono text-sm">{secondaryColor}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Publish card */}
-          <div
-            className="border p-6 shadow-sm sm:p-8"
-            style={cardStyle}
-          >
-            <div
-              className="flex h-12 w-12 items-center justify-center text-xl font-bold"
-              style={{
-                backgroundColor: style.pageBackground,
-                color: style.accentColor,
-                borderRadius: style.radius,
-              }}
-            >
-              ↗
-            </div>
-
-            <h2 className="mt-5 text-xl font-extrabold">
-              {isPublished ? "Your store is live" : "Ready to go live?"}
-            </h2>
-
-            <p
-              className="mt-3 text-sm leading-6"
-              style={{ color: style.mutedColor }}
-            >
-              {isPublished
-                ? "Your store has been published. You can review its details and check its status."
-                : "Publish your store when you're ready to make it available through your public storefront."}
+        {/* Footer */}
+        <footer className="mt-12 border-t border-slate-200 py-6">
+          <div className="flex flex-col justify-between gap-3 text-xs text-slate-500 sm:flex-row sm:items-center">
+            <p>
+              © {new Date().getFullYear()} Olatinn. All rights reserved.
             </p>
 
-            <div className="mt-6">
-              {isPublished ? (
-                <div
-                  className="px-4 py-3 text-sm font-semibold"
-                  style={{
-                    backgroundColor: "#dcfce7",
-                    color: "#166534",
-                    borderRadius: style.radius,
-                  }}
-                >
-                  Store published successfully
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={handlePublish}
-                  disabled={publishing}
-                  className="w-full px-5 py-3.5 font-bold text-white transition hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-60"
-                  style={primaryButtonStyle}
-                >
-                  {publishing ? "Publishing..." : "Publish My Store"}
-                </button>
-              )}
+            <div className="flex flex-wrap gap-4">
+              <Link
+                href="/dashboard"
+                className="transition hover:text-[#17acdd]"
+              >
+                Main Dashboard
+              </Link>
+
+              <Link
+                href="/store-front"
+                className="transition hover:text-[#17acdd]"
+              >
+                Store Front
+              </Link>
+
+              <Link
+                href="/store-front/plans"
+                className="transition hover:text-[#17acdd]"
+              >
+                Subscription Plans
+              </Link>
             </div>
-
-            <p
-              className="mt-4 text-xs leading-5"
-              style={{ color: style.mutedColor }}
-            >
-              Make sure your store details are correct before publishing.
-            </p>
           </div>
-        </section>
-
-        {/* Management cards */}
-        <section className="mt-10">
-          <h2 className="text-2xl font-extrabold">Manage your business</h2>
-          <p className="mt-2 text-sm" style={{ color: style.mutedColor }}>
-            Your tools for building and growing your online store.
-          </p>
-
-          <div className="mt-6 grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
-            {/* Products */}
-            <div
-              className="border p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-md"
-              style={cardStyle}
-            >
-              <div
-                className="flex h-12 w-12 items-center justify-center text-xl font-bold"
-                style={{
-                  backgroundColor: style.pageBackground,
-                  color: style.accentColor,
-                  borderRadius: style.radius,
-                }}
-              >
-                ◈
-              </div>
-
-              <h3 className="mt-5 text-lg font-bold">Products</h3>
-
-              <p
-                className="mt-2 text-sm leading-6"
-                style={{ color: style.mutedColor }}
-              >
-                Add products, organise your catalogue, and manage the items
-                you want customers to discover.
-              </p>
-
-              <div
-                className="mt-5 inline-flex px-3 py-2 text-xs font-semibold"
-                style={{
-                  backgroundColor: style.pageBackground,
-                  color: style.mutedColor,
-                  borderRadius: style.radius,
-                }}
-              >
-                Product management not connected yet
-              </div>
-            </div>
-
-            {/* Store details */}
-            <Link
-              href="/store-front/setup"
-              className="group border p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-md"
-              style={cardStyle}
-            >
-              <div
-                className="flex h-12 w-12 items-center justify-center text-xl font-bold"
-                style={{
-                  backgroundColor: style.pageBackground,
-                  color: style.accentColor,
-                  borderRadius: style.radius,
-                }}
-              >
-                ✎
-              </div>
-
-              <h3 className="mt-5 text-lg font-bold">
-                Store details and design
-              </h3>
-
-              <p
-                className="mt-2 text-sm leading-6"
-                style={{ color: style.mutedColor }}
-              >
-                Review your business information, branding, colours, and logo.
-              </p>
-
-              <span
-                className="mt-5 inline-flex items-center font-bold"
-                style={{ color: primaryColor }}
-              >
-                Review store details <span className="ml-2">→</span>
-              </span>
-            </Link>
-
-            {/* Plans */}
-            <Link
-              href="/store-front/plans"
-              className="group border p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-md"
-              style={cardStyle}
-            >
-              <div
-                className="flex h-12 w-12 items-center justify-center text-xl font-bold"
-                style={{
-                  backgroundColor: style.pageBackground,
-                  color: style.accentColor,
-                  borderRadius: style.radius,
-                }}
-              >
-                ☆
-              </div>
-
-              <h3 className="mt-5 text-lg font-bold">Plans and upgrades</h3>
-
-              <p
-                className="mt-2 text-sm leading-6"
-                style={{ color: style.mutedColor }}
-              >
-                Explore options for growing your business with additional
-                stores and higher product limits.
-              </p>
-
-              <span
-                className="mt-5 inline-flex items-center font-bold"
-                style={{ color: primaryColor }}
-              >
-                Explore plans <span className="ml-2">→</span>
-              </span>
-            </Link>
-          </div>
-        </section>
-
-        {/* Footer information */}
-        <section
-          className="mt-10 border p-6 sm:p-8"
-          style={cardStyle}
-        >
-          <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h2 className="text-lg font-extrabold">
-                Keep building your business
-              </h2>
-
-              <p
-                className="mt-2 max-w-2xl text-sm leading-6"
-                style={{ color: style.mutedColor }}
-              >
-                Your Store Front is the starting point for your online
-                business. Complete your store details and prepare your product
-                catalogue as the next features become available.
-              </p>
-            </div>
-
-            <Link
-              href="/dashboard"
-              className="inline-flex shrink-0 items-center justify-center border px-5 py-3 font-bold transition hover:opacity-75"
-              style={{
-                borderColor: style.borderColor,
-                borderRadius: style.radius,
-                color: style.textColor,
-              }}
-            >
-              Return to Olatinn
-            </Link>
-          </div>
-        </section>
-
-        <footer
-          className="py-8 text-center text-xs"
-          style={{ color: style.mutedColor }}
-        >
-          Olatinn Store Front · {activeTheme} theme
         </footer>
       </div>
     </main>

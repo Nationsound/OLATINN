@@ -284,7 +284,7 @@ export default function StoreFrontPage() {
               </Link>
 
               <a
-                href="#experience"
+                href="/store-front/shop"
                 className="inline-flex items-center rounded-full border border-white/40 bg-white/10 px-7 py-4 font-semibold text-white backdrop-blur-md transition hover:bg-white hover:text-[#000271]"
               >
                 Explore the Experience
