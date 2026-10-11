@@ -71,7 +71,7 @@ const Navbar = () => {
       className="fixed left-0 top-0 z-50 w-full"
     >
       {/* Desktop and tablet navbar */}
-      <div className="hidden items-center justify-between border-b border-white/10 bg-[var(--primary)]/95 px-6 py-3 text-white shadow-lg shadow-black/10 backdrop-blur-xl md:flex lg:px-10">
+      <div className="hidden items-center justify-between border-b border-white/10 bg-[var(--primary)]/95 px-6 text-white shadow-lg shadow-black/10 backdrop-blur-xl md:flex lg:px-10">
         {/* Logo */}
         <Link
           href="/"

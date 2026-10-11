@@ -72,7 +72,7 @@ export default function StoreFrontPage() {
   const currentSlide = slides[activeSlide];
 
   return (
-    <main className="min-h-screen overflow-hidden bg-white text-slate-900">
+    <main className="min-h-screen overflow-hidden bg-white text-slate-900 mt-26">
       {/* Announcement bar */}
       <div className="bg-[#000271] px-4 py-2.5 text-center text-xs font-medium tracking-wide text-white sm:text-sm">
         A better way to bring your business online.

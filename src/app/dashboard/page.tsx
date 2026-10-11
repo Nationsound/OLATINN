@@ -399,7 +399,7 @@ setUser(profile as User);
   // --------------------------------------------------
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6 mt-18">
+    <div className="min-h-screen bg-gray-50 p-6 mt-24">
       <div className="max-w-5xl mx-auto">
 
         {/* Header */}
