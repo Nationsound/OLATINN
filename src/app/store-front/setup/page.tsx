@@ -17,6 +17,8 @@ type Store = {
   slug: string;
   category: string;
   description: string;
+  contactEmail?: string;
+  contactPhone?: string;
   logoUrl?: string;
   primaryColor: string;
   secondaryColor: string;
@@ -81,6 +83,8 @@ const StoreSetupPage = () => {
   const [slugEdited, setSlugEdited] = useState(false);
   const [category, setCategory] = useState("");
   const [description, setDescription] = useState("");
+  const [contactEmail, setContactEmail] = useState("");
+  const [contactPhone, setContactPhone] = useState("");
   const [logoUrl, setLogoUrl] = useState("");
 
   // Store branding
@@ -329,6 +333,8 @@ const StoreSetupPage = () => {
           slug: cleanSlug,
           category,
           description: description.trim(),
+          contactEmail: contactEmail.trim(),
+          contactPhone: contactPhone.trim(),
           logoUrl: logoUrl.trim(),
           primaryColor,
           secondaryColor,
@@ -451,7 +457,7 @@ const StoreSetupPage = () => {
           </div>
 
           <h1 className="text-2xl font-bold text-slate-900">
-            We couldn't load your store setup
+            We couldn&apos;t load your store setup
           </h1>
 
           <p className="mt-3 text-sm leading-6 text-slate-600">
@@ -931,6 +937,47 @@ const StoreSetupPage = () => {
                 rows={4}
                 className="w-full resize-y rounded-xl border border-slate-200 bg-slate-50 px-4 py-3.5 text-sm leading-6 outline-none transition placeholder:text-slate-400 focus:border-[#17acdd] focus:bg-white focus:ring-4 focus:ring-cyan-50"
               />
+            </div>
+
+            {/* Contact details */}
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label
+                  htmlFor="contactEmail"
+                  className="mb-2 block text-sm font-bold text-slate-800"
+                >
+                  Contact email
+                </label>
+
+                <input
+                  id="contactEmail"
+                  type="email"
+                  value={contactEmail}
+                  onChange={(event) => setContactEmail(event.target.value)}
+                  placeholder="hello@yourbusiness.com"
+                  autoComplete="email"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3.5 text-sm outline-none transition placeholder:text-slate-400 focus:border-[#17acdd] focus:bg-white focus:ring-4 focus:ring-cyan-50"
+                />
+              </div>
+
+              <div>
+                <label
+                  htmlFor="contactPhone"
+                  className="mb-2 block text-sm font-bold text-slate-800"
+                >
+                  Contact phone
+                </label>
+
+                <input
+                  id="contactPhone"
+                  type="tel"
+                  value={contactPhone}
+                  onChange={(event) => setContactPhone(event.target.value)}
+                  placeholder="e.g. +27 82 123 4567"
+                  autoComplete="tel"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3.5 text-sm outline-none transition placeholder:text-slate-400 focus:border-[#17acdd] focus:bg-white focus:ring-4 focus:ring-cyan-50"
+                />
+              </div>
             </div>
 
             {/* Store logo upload */}

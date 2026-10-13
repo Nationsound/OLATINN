@@ -5,31 +5,31 @@ import { useEffect, useState } from "react";
 
 const slides = [
   {
-    eyebrow: "YOUR BUSINESS. YOUR DIGITAL WORLD.",
-    title: "Your brand deserves a beautiful store.",
+    eyebrow: "FASHION • STYLE • ACCESSORIES",
+    title: "Your style deserves a beautiful store.",
     description:
-      "Create a stunning online storefront, showcase your products, and give your customers a shopping experience worth coming back for.",
+      "Showcase clothing, shoes, bags, jewellery, and accessories in a stunning online storefront designed to make your products stand out.",
     image:
       "https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=2200&q=90",
     imageAlt: "Beautiful contemporary fashion retail store",
   },
   {
-    eyebrow: "SELL YOUR STYLE",
-    title: "Make every product impossible to ignore.",
+    eyebrow: "FOOD • AGRICULTURE • LIVESTOCK",
+    title: "Bring your farm and food business online.",
     description:
-      "Bring your catalogue to life with beautiful product displays and a storefront designed around your business.",
+      "From fresh produce and groceries to poultry, cattle, livestock, and farm products, create a digital storefront where customers can discover what you sell.",
     image:
-      "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?auto=format&fit=crop&w=2200&q=90",
-    imageAlt: "Premium fashion collection displayed in a boutique",
+      "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=2200&q=90",
+    imageAlt: "Fresh fruits and vegetables displayed at a food market",
   },
   {
-    eyebrow: "BUILT FOR AMBITIOUS BUSINESSES",
-    title: "Turn your vision into an online destination.",
+    eyebrow: "ELECTRONICS • BEAUTY • EVERYDAY ESSENTIALS",
+    title: "Whatever you sell, there's room for your brand.",
     description:
-      "Build your digital presence, organise your products, and create a home for your brand on the internet.",
+      "Sell electronics, beauty products, home essentials, handmade goods, and more. Organise your catalogue and give your business a professional online home.",
     image:
       "https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?auto=format&fit=crop&w=2200&q=90",
-    imageAlt: "Shopping bags and products ready for online retail",
+    imageAlt: "Shopping bags and retail products ready for customers",
   },
 ];
 

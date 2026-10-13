@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { addToCart, type CartItem } from "../../lib/storeCart";
+import WhatsAppChatButton from "../../components/store-front/WhatsAppChatButton";
 
 type Store = {
   _id?: string;
@@ -12,12 +13,15 @@ type Store = {
   slug: string;
   category: string;
   description?: string;
+  contactEmail?: string;
+  contactPhone?: string;
   logoUrl?: string;
   primaryColor?: string;
   secondaryColor?: string;
   theme?: "modern" | "minimal" | "boutique";
   status?: string;
   currency?: string;
+  whatsappNumber?: string;
 };
 
 type ProductImage = {
@@ -40,15 +44,24 @@ type Product = {
   status?: string;
 };
 
+type StoreResponse = {
+  success?: boolean;
+  message?: string;
+  store?: Store;
+};
+
+type ProductsResponse = {
+  success?: boolean;
+  message?: string;
+  products?: Product[];
+};
+
 const API_URL = (
   process.env.NEXT_PUBLIC_API_URL ||
   "http://localhost:5000/olatinn/api"
 ).replace(/\/+$/, "");
 
-const formatPrice = (
-  price: number,
-  currency: string
-): string => {
+const formatPrice = (price: number, currency: string): string => {
   try {
     return new Intl.NumberFormat("en-ZA", {
       style: "currency",
@@ -59,6 +72,16 @@ const formatPrice = (
     return `${currency} ${price.toFixed(2)}`;
   }
 };
+
+async function readJsonResponse<T>(response: Response): Promise<T> {
+  const responseText = await response.text();
+
+  try {
+    return JSON.parse(responseText) as T;
+  } catch {
+    throw new Error("The server returned an invalid response.");
+  }
+}
 
 export default function PublicStorePage() {
   const params = useParams<{ slug: string }>();
@@ -75,7 +98,12 @@ export default function PublicStorePage() {
   const [cartMessage, setCartMessage] = useState("");
 
   useEffect(() => {
-    if (!slug) return;
+    if (!slug) {
+      setLoading(false);
+      setProductsLoading(false);
+      setError("The store address is missing.");
+      return;
+    }
 
     let cancelled = false;
 
@@ -84,27 +112,17 @@ export default function PublicStorePage() {
       setProductsLoading(true);
       setError("");
       setProductError("");
+      setStore(null);
+      setProducts([]);
 
       try {
+        // Fetch the public storefront.
         const storeResponse = await fetch(
           `${API_URL}/stores/public/${encodeURIComponent(slug)}`
         );
 
-        const storeText = await storeResponse.text();
-
-        let storeData: {
-          success?: boolean;
-          message?: string;
-          store?: Store;
-        };
-
-        try {
-          storeData = JSON.parse(storeText);
-        } catch {
-          throw new Error(
-            "The server returned an invalid store response."
-          );
-        }
+        const storeData =
+          await readJsonResponse<StoreResponse>(storeResponse);
 
         if (
           !storeResponse.ok ||
@@ -123,26 +141,11 @@ export default function PublicStorePage() {
         // Fetch published products belonging to this store.
         try {
           const productsResponse = await fetch(
-            `${API_URL}/products/public/store/${encodeURIComponent(
-              slug
-            )}`
+            `${API_URL}/products/public/store/${encodeURIComponent(slug)}`
           );
 
-          const productsText = await productsResponse.text();
-
-          let productsData: {
-            success?: boolean;
-            message?: string;
-            products?: Product[];
-          };
-
-          try {
-            productsData = JSON.parse(productsText);
-          } catch {
-            throw new Error(
-              "The server returned an invalid products response."
-            );
-          }
+          const productsData =
+            await readJsonResponse<ProductsResponse>(productsResponse);
 
           if (
             !productsResponse.ok ||
@@ -156,10 +159,10 @@ export default function PublicStorePage() {
 
           if (!cancelled) {
             setProducts(
-  Array.isArray(productsData.products)
-    ? productsData.products
-    : []
-);
+              Array.isArray(productsData.products)
+                ? productsData.products
+                : []
+            );
           }
         } catch (err) {
           if (!cancelled) {
@@ -181,9 +184,6 @@ export default function PublicStorePage() {
               ? err.message
               : "Unable to load this storefront."
           );
-        }
-
-        if (!cancelled) {
           setProductsLoading(false);
         }
       } finally {
@@ -193,7 +193,7 @@ export default function PublicStorePage() {
       }
     };
 
-    loadStore();
+    void loadStore();
 
     return () => {
       cancelled = true;
@@ -210,10 +210,7 @@ export default function PublicStorePage() {
 
     const stockQuantity = Number(product.stockQuantity ?? 0);
 
-    if (
-      product.trackInventory &&
-      stockQuantity <= 0
-    ) {
+    if (product.trackInventory && stockQuantity <= 0) {
       setCartMessage(`${product.name} is currently out of stock.`);
       return;
     }
@@ -228,9 +225,7 @@ export default function PublicStorePage() {
         storeName: store.storeName,
         storeSlug: store.slug,
         currency: store.currency || "ZAR",
-        stockQuantity: product.trackInventory
-          ? stockQuantity
-          : -1,
+        stockQuantity: product.trackInventory ? stockQuantity : -1,
       };
 
       const updatedCart = addToCart(item);
@@ -313,7 +308,7 @@ export default function PublicStorePage() {
         {
           "--store-primary": primaryColor,
           "--store-secondary": secondaryColor,
-        } as React.CSSProperties
+        } as CSSProperties
       }
     >
       {/* Store navigation */}
@@ -597,12 +592,11 @@ export default function PublicStorePage() {
                         type="button"
                         disabled={outOfStock}
                         onClick={() => handleAddToCart(product)}
-                        className="mt-auto w-full rounded-xl px-4 py-3 font-bold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-600"
+                        className="mt-5 w-full rounded-xl px-4 py-3 font-bold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-600"
                         style={{
                           backgroundColor: outOfStock
                             ? undefined
                             : primaryColor,
-                          marginTop: "20px",
                         }}
                       >
                         {outOfStock ? "Out of stock" : "🛒 Add to Cart"}
@@ -615,6 +609,13 @@ export default function PublicStorePage() {
           </>
         )}
       </section>
+
+      {/* Floating WhatsApp button */}
+      <WhatsAppChatButton
+        whatsappNumber={store.whatsappNumber}
+        storeName={store.storeName}
+        className="fixed bottom-6 right-6 z-50"
+      />
 
       {/* Footer */}
       <footer className="border-t border-gray-200 bg-white">

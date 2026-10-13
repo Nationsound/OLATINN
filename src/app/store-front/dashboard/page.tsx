@@ -22,6 +22,9 @@ interface Store {
   slug: string;
   category: string;
   description?: string;
+  contactEmail?: string;
+  contactPhone?: string;
+  whatsappNumber?: string;
   logoUrl?: string;
   primaryColor: string;
   secondaryColor: string;
@@ -62,6 +65,9 @@ interface EditForm {
   slug: string;
   category: string;
   description: string;
+  contactEmail: string;
+  contactPhone: string;
+  whatsappNumber?: string;
   logoUrl: string;
   primaryColor: string;
   secondaryColor: string;
@@ -74,6 +80,9 @@ const EMPTY_FORM: EditForm = {
   slug: "",
   category: "",
   description: "",
+  contactEmail: "",
+  contactPhone: "",
+  whatsappNumber: "",
   logoUrl: "",
   primaryColor: "#000271",
   secondaryColor: "#17acdd",
@@ -265,6 +274,9 @@ export default function StoreFrontDashboardPage() {
       slug: store.slug || "",
       category: store.category || "",
       description: store.description || "",
+      contactEmail: store.contactEmail || "",
+      contactPhone: store.contactPhone || "",
+      whatsappNumber: store.whatsappNumber || "",
       logoUrl: store.logoUrl || "",
       primaryColor: store.primaryColor || "#000271",
       secondaryColor: store.secondaryColor || "#17acdd",
@@ -338,6 +350,9 @@ export default function StoreFrontDashboardPage() {
             slug: editForm.slug.trim(),
             category: editForm.category.trim(),
             description: editForm.description.trim(),
+            contactEmail: editForm.contactEmail.trim(),
+            contactPhone: editForm.contactPhone.trim(),
+            whatsappNumber: (editForm.whatsappNumber ?? "").trim(),
             logoUrl: editForm.logoUrl.trim(),
             primaryColor: editForm.primaryColor,
             secondaryColor: editForm.secondaryColor,
@@ -902,7 +917,7 @@ export default function StoreFrontDashboardPage() {
                 </h2>
 
                 <p className="mt-2 text-sm text-slate-500">
-                  Update your business details and storefront appearance.
+                  Update your business details and storefront appearance, and whatsapp number. You can also change your store&apos;s theme and colors. Changes will be saved when you click &ldquo;Save changes&rdquo;.
                 </p>
               </div>
 
@@ -1045,6 +1060,86 @@ export default function StoreFrontDashboardPage() {
                     placeholder="Tell customers about your business and what makes your store special."
                   />
                 </div>
+
+                <div className="sm:col-span-2 grid gap-4 md:grid-cols-2">
+                  <div>
+                    <label
+                      htmlFor="contactEmail"
+                      className="mb-2 block text-sm font-bold text-slate-700"
+                    >
+                      Contact email
+                    </label>
+                    <input
+                      id="contactEmail"
+                      type="email"
+                      autoComplete="email"
+                      value={editForm.contactEmail}
+                      onChange={(event) =>
+                        handleEditChange(
+                          "contactEmail",
+                          event.target.value
+                        )
+                      }
+                      className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-[#17acdd] focus:ring-2 focus:ring-cyan-100"
+                      placeholder="hello@yourbusiness.com"
+                    />
+                  </div>
+
+                  <div>
+                    <label
+                      htmlFor="contactPhone"
+                      className="mb-2 block text-sm font-bold text-slate-700"
+                    >
+                      Contact phone
+                    </label>
+                    <input
+                      id="contactPhone"
+                      type="tel"
+                      inputMode="tel"
+                      autoComplete="tel"
+                      value={editForm.contactPhone}
+                      onChange={(event) =>
+                        handleEditChange(
+                          "contactPhone",
+                          event.target.value
+                        )
+                      }
+                      className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-[#17acdd] focus:ring-2 focus:ring-cyan-100"
+                      placeholder="e.g. +27 82 123 4567"
+                    />
+                  </div>
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label
+                    htmlFor="edit-whatsapp-number"
+                    className="mb-2 block text-sm font-bold text-slate-700"
+                  >
+                    WhatsApp business number
+                  </label>
+                  <input
+                    id="edit-whatsapp-number"
+                    type="tel"
+                    inputMode="tel"
+                    autoComplete="tel"
+                    maxLength={20}
+                    value={editForm.whatsappNumber}
+                    onChange={(event) =>
+                      handleEditChange(
+                        "whatsappNumber",
+                        event.target.value
+                      )
+                    }
+                    className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-[#17acdd] focus:ring-2 focus:ring-cyan-100"
+                    placeholder="e.g. 27821234567"
+                  />
+                  <p className="mt-2 text-xs leading-5 text-slate-500">
+                    Include your country code, without spaces or the
+                    plus sign. For example, a South African number can
+                    start with 27. Leave this blank if you do not want
+                    a WhatsApp contact button on your public store.
+                  </p>
+                </div> 
 
                 <div className="md:col-span-2">
                   <label
