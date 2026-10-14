@@ -145,8 +145,8 @@ export default function StoreFrontPlansPage() {
 
       if (token) {
         const results = await Promise.allSettled([
-          apiRequest("/subscription/me"),
-          apiRequest("/subscription/bank-details"),
+          apiRequest("/subscriptions/me"),
+          apiRequest("/subscriptions/bank-details"),
         ]);
 
         if (results[0].status === "fulfilled") {
@@ -223,7 +223,7 @@ export default function StoreFrontPlansPage() {
     setSubmitting(true);
 
     try {
-      const result = await apiRequest("/subscription/free", {
+      const result = await apiRequest("/subscriptions/free", {
         method: "POST",
         body: JSON.stringify({}),
       });
@@ -268,7 +268,7 @@ export default function StoreFrontPlansPage() {
     setSubmitting(true);
 
     try {
-      const result = await apiRequest("/subscription/receipt", {
+      const result = await apiRequest("/subscriptions/receipt", {
         method: "POST",
         body: formData,
       });
@@ -335,7 +335,7 @@ export default function StoreFrontPlansPage() {
     setSubmitting(true);
 
     try {
-      const result = await apiRequest("/subscription/cancel", {
+      const result = await apiRequest("/subscriptions/cancel", {
         method: "POST",
         body: JSON.stringify({}),
       });

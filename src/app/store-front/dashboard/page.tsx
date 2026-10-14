@@ -1639,6 +1639,13 @@ export default function StoreFrontDashboardPage() {
       >
         + Add Product
       </Link>
+
+      <Link
+        href={`/store-front/account-settings?storeId=${encodeURIComponent(store._id)}`}
+        className="inline-flex items-center justify-center rounded-xl bg-[#1393aa] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-[#17acdd]"
+      >
+        + Add Payment Settings
+      </Link>
     </div>
   </div>
 </div>

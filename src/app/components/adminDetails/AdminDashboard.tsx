@@ -106,10 +106,10 @@ const AdminDashboard: React.FC = () => {
 
   // ✅ Fetch per tab change
   useEffect(() => {
-  if (activeTab === "bookings") fetchData<Booking[]>("/olatinn/api/bookings", setBookings);
-  if (activeTab === "subscribers") fetchData<Subscriber[]>("/olatinn/api/subscribers", setSubscribers);
-  if (activeTab === "partners") fetchData<Partner[]>("/olatinn/api/partners", setPartners);
-  if (activeTab === "admins") fetchData<AdminUser[]>("/olatinn/api/admin/list", setAdmins);
+  if (activeTab === "bookings") fetchData<Booking[]>("/bookings", setBookings);
+  if (activeTab === "subscribers") fetchData<Subscriber[]>("/subscribers", setSubscribers);
+  if (activeTab === "partners") fetchData<Partner[]>("/partners", setPartners);
+  if (activeTab === "admins") fetchData<AdminUser[]>("/admin/list", setAdmins);
 }, [activeTab, fetchData]);
 
   return (

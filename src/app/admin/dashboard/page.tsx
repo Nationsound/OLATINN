@@ -10,6 +10,7 @@ import AdminReviews from "@/app/components/adminReview/Adminreviews";
 import DesignTemplate from "@/app/index/designtemplate/DesignTemplate";
 import InvoicesPage from "@/app/invoices/page";
 import CreateInvoicePage from "@/app/invoices/create/CreateInvoice";
+import AdminSubscriptionsPage from "../subscriptions/page";
 
 const Page = () => {
   return (
@@ -27,7 +28,7 @@ const Page = () => {
         <p className="text-gray-500">
           Manage blogs, contacts, designs, and reviews efficiently.
         </p>
-      </motion.div>
+      </motion.div> 
 
       {/* Dashboard */}
       <motion.div
@@ -37,6 +38,17 @@ const Page = () => {
         className="bg-white shadow-lg rounded-2xl p-6"
       >
         <AdminDashboard />
+      </motion.div>
+
+
+      {/* Dashboard */}
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.5 }}
+        className="bg-white shadow-lg rounded-2xl p-6"
+      >
+        <AdminSubscriptionsPage />
       </motion.div>
 
       {/* Blog + Design Section */}
