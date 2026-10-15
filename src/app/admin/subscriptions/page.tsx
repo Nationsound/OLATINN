@@ -1,27 +1,43 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 
-type PendingSubscription = {
+type SubscriptionStatus =
+  | "incomplete"
+  | "active"
+  | "trialing"
+  | "canceled"
+  | "ended"
+  | "inactive"
+  | string;
+
+type BillingInterval = "monthly" | "yearly";
+
+type SubscriptionOwner = {
+  _id?: string;
+  fullName?: string;
+  name?: string;
+  email?: string;
+} | null;
+
+type SubscriptionPlan = {
+  _id?: string;
+  key?: string;
+  name?: string;
+  description?: string;
+};
+
+type SubscriptionRecord = {
   _id: string;
 
-  owner?: {
-    _id?: string;
-    fullName?: string;
-    email?: string;
-  } | null;
+  owner?: SubscriptionOwner;
 
-  plan?: {
-    _id?: string;
-    key?: string;
-    name?: string;
-    description?: string;
-  } | null;
+  plan?: SubscriptionPlan | null;
 
-  status: string;
+  status: SubscriptionStatus;
 
-  billingInterval: "monthly" | "yearly";
+  billingInterval: BillingInterval;
 
   priceAtPurchase: number | null;
 
@@ -37,30 +53,94 @@ type PendingSubscription = {
 
   currentPeriodEnd?: string | null;
 
+  cancelAtPeriodEnd?: boolean;
+
+  canceledAt?: string | null;
+
+  endedAt?: string | null;
+
   rejectionReason?: string | null;
 
+  reviewedBy?: string | null;
+
+  reviewedAt?: string | null;
+
+  paymentReceiptUrl?: string | null;
+
+  paymentReceiptPath?: string | null;
+
+  paymentReceiptPublicId?: string | null;
+
+  paymentReceiptResourceType?: string | null;
+
+  /*
+   * Kept for compatibility in case an existing backend response
+   * already maps paymentReceiptUrl to receiptUrl.
+   */
   receiptUrl?: string | null;
 
   createdAt?: string;
+
   updatedAt?: string;
 };
 
 type ApiResponse = {
   success?: boolean;
   message?: string;
-  subscriptions?: PendingSubscription[];
-  subscription?: PendingSubscription;
+
+  subscriptions?: SubscriptionRecord[];
+
+  payments?: SubscriptionRecord[];
+
+  subscribers?: SubscriptionRecord[];
+
+  subscription?: SubscriptionRecord;
+
+  count?: number;
 };
 
-const API_URL = (
-  process.env.NEXT_PUBLIC_API_URL ||
-  "http://localhost:5000/olatinn/api"
-).replace(/\/+$/, "");
+type SubscriptionSection =
+  | "pending"
+  | "reviewed"
+  | "active"
+  | "inactive";
 
-const formatAmount = (
+type TabConfig = {
+  key: SubscriptionSection;
+  label: string;
+  description: string;
+};
+
+const API_URL =
+  process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, "") || "";
+
+const TABS: TabConfig[] = [
+  {
+    key: "pending",
+    label: "Pending Payments",
+    description: "Manual payments waiting for administrator review.",
+  },
+  {
+    key: "reviewed",
+    label: "Payment History",
+    description: "Previously approved and rejected payment submissions.",
+  },
+  {
+    key: "active",
+    label: "Active Premium",
+    description: "Premium subscribers whose paid access is currently active.",
+  },
+  {
+    key: "inactive",
+    label: "Inactive Premium",
+    description: "Premium subscribers whose paid access has ended or is inactive.",
+  },
+];
+
+function formatAmount(
   amount: number | null | undefined,
   currency?: string | null
-) => {
+): string {
   if (
     amount === null ||
     amount === undefined ||
@@ -83,9 +163,9 @@ const formatAmount = (
   } catch {
     return `${normalizedCurrency} ${(amount / 100).toLocaleString()}`;
   }
-};
+}
 
-const formatDate = (date?: string | null) => {
+function formatDate(date?: string | null): string {
   if (!date) {
     return "Not available";
   }
@@ -103,44 +183,161 @@ const formatDate = (date?: string | null) => {
     hour: "numeric",
     minute: "2-digit",
   });
-};
+}
 
-const getMerchantName = (subscription: PendingSubscription) => {
+function formatShortDate(date?: string | null): string {
+  if (!date) {
+    return "Not available";
+  }
+
+  const parsed = new Date(date);
+
+  if (Number.isNaN(parsed.getTime())) {
+    return "Not available";
+  }
+
+  return parsed.toLocaleDateString("en-NG", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function getMerchantName(subscription: SubscriptionRecord): string {
   return (
     subscription.owner?.fullName ||
+    subscription.owner?.name ||
     subscription.owner?.email ||
     "Unknown merchant"
   );
-};
+}
 
-const getMerchantEmail = (subscription: PendingSubscription) => {
+function getMerchantEmail(subscription: SubscriptionRecord): string {
   return subscription.owner?.email || "Email unavailable";
-};
+}
+
+function getReceiptUrl(
+  subscription: SubscriptionRecord
+): string | null {
+  return (
+    subscription.paymentReceiptUrl ||
+    subscription.receiptUrl ||
+    null
+  );
+}
+
+function getPlanName(subscription: SubscriptionRecord): string {
+  return (
+    subscription.plan?.name ||
+    (subscription.plan?.key === "premium"
+      ? "Premium"
+      : "Store Front Plan")
+  );
+}
+
+function getStatusLabel(status?: string): string {
+  if (!status) {
+    return "Unknown";
+  }
+
+  switch (status.toLowerCase()) {
+    case "active":
+      return "Active";
+
+    case "trialing":
+      return "Trialing";
+
+    case "incomplete":
+      return "Incomplete";
+
+    case "canceled":
+      return "Canceled";
+
+    case "ended":
+      return "Ended";
+
+    case "inactive":
+      return "Inactive";
+
+    default:
+      return status.charAt(0).toUpperCase() + status.slice(1);
+  }
+}
+
+function getStatusClasses(status?: string): string {
+  switch (status?.toLowerCase()) {
+    case "active":
+    case "trialing":
+      return "bg-emerald-100 text-emerald-800";
+
+    case "incomplete":
+      return "bg-amber-100 text-amber-800";
+
+    case "canceled":
+    case "ended":
+    case "inactive":
+      return "bg-slate-200 text-slate-700";
+
+    default:
+      return "bg-slate-100 text-slate-700";
+  }
+}
+
+function isRejected(subscription: SubscriptionRecord): boolean {
+  return Boolean(
+    subscription.rejectionReason &&
+      subscription.reviewedAt
+  );
+}
+
+function isApproved(subscription: SubscriptionRecord): boolean {
+  return (
+    (subscription.status === "active" ||
+      subscription.status === "trialing") &&
+    Boolean(subscription.reviewedAt)
+  );
+}
 
 export default function AdminSubscriptionsPage() {
-  const [subscriptions, setSubscriptions] = useState<
-    PendingSubscription[]
-  >([]);
+  const [activeTab, setActiveTab] =
+    useState<SubscriptionSection>("pending");
+
+  const [pendingSubscriptions, setPendingSubscriptions] =
+    useState<SubscriptionRecord[]>([]);
+
+  const [reviewedSubscriptions, setReviewedSubscriptions] =
+    useState<SubscriptionRecord[]>([]);
+
+  const [activeSubscriptions, setActiveSubscriptions] =
+    useState<SubscriptionRecord[]>([]);
+
+  const [inactiveSubscriptions, setInactiveSubscriptions] =
+    useState<SubscriptionRecord[]>([]);
 
   const [loading, setLoading] = useState(true);
 
-  const [processingId, setProcessingId] = useState<string | null>(
-    null
-  );
+  const [refreshing, setRefreshing] = useState(false);
+
+  const [processingId, setProcessingId] =
+    useState<string | null>(null);
 
   const [error, setError] = useState("");
 
   const [notice, setNotice] = useState("");
 
-  const [rejectingSubscription, setRejectingSubscription] =
-    useState<PendingSubscription | null>(null);
+  const [endpointWarnings, setEndpointWarnings] =
+    useState<string[]>([]);
 
-  const [rejectionReason, setRejectionReason] = useState("");
+  const [rejectingSubscription, setRejectingSubscription] =
+    useState<SubscriptionRecord | null>(null);
+
+  const [rejectionReason, setRejectionReason] =
+    useState("");
 
   const [receiptSubscription, setReceiptSubscription] =
-    useState<PendingSubscription | null>(null);
+    useState<SubscriptionRecord | null>(null);
 
-  const getToken = useCallback(() => {
+  const getToken = useCallback((): string | null => {
     if (typeof window === "undefined") {
       return null;
     }
@@ -161,17 +358,26 @@ export default function AdminSubscriptionsPage() {
         );
       }
 
-      const response = await fetch(`${API_URL}${endpoint}`, {
-        ...options,
+      if (!API_URL) {
+        throw new Error(
+          "The API URL is missing. Please configure NEXT_PUBLIC_API_URL."
+        );
+      }
 
-        headers: {
-          "Content-Type": "application/json",
+      const response = await fetch(
+        `${API_URL}${endpoint}`,
+        {
+          ...options,
 
-          Authorization: `Bearer ${token}`,
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+            ...(options.headers || {}),
+          },
 
-          ...(options.headers || {}),
-        },
-      });
+          cache: "no-store",
+        }
+      );
 
       const data: ApiResponse = await response
         .json()
@@ -180,7 +386,7 @@ export default function AdminSubscriptionsPage() {
       if (!response.ok) {
         throw new Error(
           data.message ||
-            "The request could not be completed."
+            `Request failed with status ${response.status}.`
         );
       }
 
@@ -189,41 +395,224 @@ export default function AdminSubscriptionsPage() {
     [getToken]
   );
 
-  const loadPendingSubscriptions = useCallback(
-    async () => {
+  /*
+   * ============================================================
+   * LOAD ALL SUBSCRIPTION CATEGORIES
+   * ============================================================
+   *
+   * Existing endpoint:
+   *
+   * GET /subscriptions/admin/pending
+   *
+   * New backend endpoints to implement:
+   *
+   * GET /subscriptions/admin/reviewed
+   * GET /subscriptions/admin/premium/active
+   * GET /subscriptions/admin/premium/inactive
+   *
+   * Promise.allSettled is intentional.
+   *
+   * It means the existing pending-payment page continues working
+   * even while the new backend endpoints are being implemented.
+   */
+  const loadAllSubscriptions = useCallback(
+  async (showFullLoader = true) => {
+    if (showFullLoader) {
       setLoading(true);
-      setError("");
+    } else {
+      setRefreshing(true);
+    }
 
-      try {
-        const result = await apiRequest(
-          "/subscriptions/admin/pending"
-        );
+    setError("");
+    setEndpointWarnings([]);
 
-        setSubscriptions(result.subscriptions || []);
-      } catch (err) {
-        setError(
-          err instanceof Error
-            ? err.message
-            : "Unable to load pending subscriptions."
+    try {
+      const token = getToken();
+
+      if (!token) {
+        throw new Error(
+          "Administrator authentication is required. Please sign in again."
         );
-      } finally {
-        setLoading(false);
       }
-    },
-    [apiRequest]
-  );
+
+      const results = await Promise.allSettled([
+        // ========================================
+        // Pending manual payments
+        // Backend returns: { subscriptions: [...] }
+        // ========================================
+        apiRequest("/subscriptions/admin/pending"),
+
+        // ========================================
+        // Reviewed payment history
+        // Backend returns: { payments: [...] }
+        // ========================================
+        apiRequest("/subscriptions/admin/history"),
+
+        // ========================================
+        // Active Premium subscribers
+        // Backend returns: { subscribers: [...] }
+        // ========================================
+        apiRequest("/subscriptions/admin/premium/active"),
+
+        // ========================================
+        // Inactive Premium subscribers
+        // Backend returns: { subscribers: [...] }
+        // ========================================
+        apiRequest("/subscriptions/admin/premium/inactive"),
+      ]);
+
+      const warnings: string[] = [];
+
+      // ========================================
+      // 1. PENDING PAYMENTS
+      // ========================================
+
+      if (results[0].status === "fulfilled") {
+        const result = results[0].value;
+
+        setPendingSubscriptions(
+          Array.isArray(result.subscriptions)
+            ? result.subscriptions
+            : []
+        );
+      } else {
+        setPendingSubscriptions([]);
+
+        warnings.push(
+          `Pending payments: ${
+            results[0].reason instanceof Error
+              ? results[0].reason.message
+              : "Unable to load."
+          }`
+        );
+      }
+
+      // ========================================
+      // 2. PAYMENT HISTORY
+      // ========================================
+      // IMPORTANT:
+      // getPaymentHistory returns "payments",
+      // NOT "subscriptions".
+      // ========================================
+
+      if (results[1].status === "fulfilled") {
+        const result = results[1].value;
+
+        setReviewedSubscriptions(
+          Array.isArray(result.payments)
+            ? result.payments
+            : []
+        );
+      } else {
+        setReviewedSubscriptions([]);
+
+        warnings.push(
+          `Payment history: ${
+            results[1].reason instanceof Error
+              ? results[1].reason.message
+              : "Unable to load."
+          }`
+        );
+      }
+
+      // ========================================
+      // 3. ACTIVE PREMIUM SUBSCRIBERS
+      // ========================================
+      // IMPORTANT:
+      // getActivePremiumSubscribers returns
+      // "subscribers", NOT "subscriptions".
+      // ========================================
+
+      if (results[2].status === "fulfilled") {
+        const result = results[2].value;
+
+        setActiveSubscriptions(
+          Array.isArray(result.subscribers)
+            ? result.subscribers
+            : []
+        );
+      } else {
+        setActiveSubscriptions([]);
+
+        warnings.push(
+          `Active Premium subscribers: ${
+            results[2].reason instanceof Error
+              ? results[2].reason.message
+              : "Unable to load."
+          }`
+        );
+      }
+
+      // ========================================
+      // 4. INACTIVE PREMIUM SUBSCRIBERS
+      // ========================================
+      // IMPORTANT:
+      // getInactivePremiumSubscribers returns
+      // "subscribers", NOT "subscriptions".
+      // ========================================
+
+      if (results[3].status === "fulfilled") {
+        const result = results[3].value;
+
+        setInactiveSubscriptions(
+          Array.isArray(result.subscribers)
+            ? result.subscribers
+            : []
+        );
+      } else {
+        setInactiveSubscriptions([]);
+
+        warnings.push(
+          `Inactive Premium subscribers: ${
+            results[3].reason instanceof Error
+              ? results[3].reason.message
+              : "Unable to load."
+          }`
+        );
+      }
+
+      setEndpointWarnings(warnings);
+
+      // ========================================
+      // If the main pending endpoint failed,
+      // show the general error.
+      // ========================================
+
+      if (results[0].status === "rejected") {
+        throw results[0].reason;
+      }
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Unable to load subscriptions."
+      );
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  },
+  [apiRequest, getToken]
+);
 
   useEffect(() => {
-    void loadPendingSubscriptions();
-  }, [loadPendingSubscriptions]);
+    void loadAllSubscriptions(true);
+  }, [loadAllSubscriptions]);
 
+  /*
+   * ============================================================
+   * APPROVE PAYMENT
+   * ============================================================
+   */
   const handleApprove = async (
-    subscription: PendingSubscription
+    subscription: SubscriptionRecord
   ) => {
     const merchantName = getMerchantName(subscription);
 
     const confirmed = window.confirm(
-      `Approve the payment from ${merchantName} and activate the ${subscription.plan?.name || "Premium"} subscription?`
+      `Approve the payment from ${merchantName} and activate the ${getPlanName(
+        subscription
+      )} subscription?`
     );
 
     if (!confirmed) {
@@ -236,7 +625,9 @@ export default function AdminSubscriptionsPage() {
 
     try {
       const result = await apiRequest(
-        `/subscriptions/admin/${subscription._id}/approve`,
+        `/subscriptions/admin/${encodeURIComponent(
+          subscription._id
+        )}/approve`,
         {
           method: "PATCH",
         }
@@ -247,7 +638,11 @@ export default function AdminSubscriptionsPage() {
           "Payment approved and subscription activated."
       );
 
-      await loadPendingSubscriptions();
+      /*
+       * Refresh everything so the subscription moves from
+       * pending into the appropriate historical/active section.
+       */
+      await loadAllSubscriptions(false);
     } catch (err) {
       setError(
         err instanceof Error
@@ -259,8 +654,13 @@ export default function AdminSubscriptionsPage() {
     }
   };
 
+  /*
+   * ============================================================
+   * OPEN REJECTION MODAL
+   * ============================================================
+   */
   const openRejectModal = (
-    subscription: PendingSubscription
+    subscription: SubscriptionRecord
   ) => {
     setError("");
     setNotice("");
@@ -277,6 +677,11 @@ export default function AdminSubscriptionsPage() {
     setRejectionReason("");
   };
 
+  /*
+   * ============================================================
+   * REJECT PAYMENT
+   * ============================================================
+   */
   const handleReject = async () => {
     if (!rejectingSubscription) {
       return;
@@ -304,9 +709,12 @@ export default function AdminSubscriptionsPage() {
 
     try {
       const result = await apiRequest(
-        `/subscriptions/admin/${rejectingSubscription._id}/reject`,
+        `/subscriptions/admin/${encodeURIComponent(
+          rejectingSubscription._id
+        )}/reject`,
         {
           method: "PATCH",
+
           body: JSON.stringify({
             reason,
           }),
@@ -321,7 +729,7 @@ export default function AdminSubscriptionsPage() {
       setRejectingSubscription(null);
       setRejectionReason("");
 
-      await loadPendingSubscriptions();
+      await loadAllSubscriptions(false);
     } catch (err) {
       setError(
         err instanceof Error
@@ -333,13 +741,64 @@ export default function AdminSubscriptionsPage() {
     }
   };
 
-  const pendingCount = subscriptions.length;
+  /*
+   * ============================================================
+   * SELECT CURRENT LIST
+   * ============================================================
+   */
+  const currentSubscriptions = useMemo(() => {
+    switch (activeTab) {
+      case "reviewed":
+        return reviewedSubscriptions;
 
+      case "active":
+        return activeSubscriptions;
+
+      case "inactive":
+        return inactiveSubscriptions;
+
+      case "pending":
+      default:
+        return pendingSubscriptions;
+    }
+  }, [
+    activeTab,
+    pendingSubscriptions,
+    reviewedSubscriptions,
+    activeSubscriptions,
+    inactiveSubscriptions,
+  ]);
+
+  const pendingCount = pendingSubscriptions.length;
+
+  const reviewedCount = reviewedSubscriptions.length;
+
+  const approvedCount = reviewedSubscriptions.filter(
+    isApproved
+  ).length;
+
+  const rejectedCount = reviewedSubscriptions.filter(
+    isRejected
+  ).length;
+
+  const activeCount = activeSubscriptions.length;
+
+  const inactiveCount = inactiveSubscriptions.length;
+
+  /*
+   * ============================================================
+   * RENDER
+   * ============================================================
+   */
   return (
     <main className="min-h-screen bg-slate-50 text-slate-900">
-      {/* Header */}
+      {/* ========================================================
+          HEADER
+          ======================================================== */}
       <section className="relative overflow-hidden bg-[#000271] px-5 py-14 text-white sm:px-8 lg:py-18">
         <div className="absolute -right-32 -top-32 h-80 w-80 rounded-full bg-[#17acdd]/20 blur-3xl" />
+
+        <div className="absolute -bottom-32 -left-32 h-80 w-80 rounded-full bg-white/5 blur-3xl" />
 
         <div className="relative mx-auto max-w-7xl">
           <Link
@@ -349,36 +808,71 @@ export default function AdminSubscriptionsPage() {
             ← Back to Admin Dashboard
           </Link>
 
-          <div className="flex flex-col justify-between gap-6 lg:flex-row lg:items-end">
+          <div className="flex flex-col justify-between gap-8 lg:flex-row lg:items-end">
             <div>
               <p className="mb-3 text-sm font-bold uppercase tracking-[0.2em] text-cyan-200">
                 Olatinn Store Front
               </p>
 
               <h1 className="text-4xl font-extrabold tracking-tight sm:text-5xl">
-                Subscription Payments
+                Subscription Management
               </h1>
 
-              <p className="mt-4 max-w-2xl text-sm leading-7 text-blue-100 sm:text-base">
-                Review merchant payment receipts and approve
-                or reject Store Front subscription requests.
+              <p className="mt-4 max-w-3xl text-sm leading-7 text-blue-100 sm:text-base">
+                Review manual payments, inspect receipts, approve or
+                reject subscription requests, and monitor Premium
+                subscribers.
               </p>
             </div>
 
-            <div className="rounded-2xl border border-white/15 bg-white/10 px-6 py-4 backdrop-blur">
-              <p className="text-xs font-semibold uppercase tracking-wider text-cyan-200">
-                Pending payments
-              </p>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:min-w-[620px]">
+              <div className="rounded-2xl border border-white/15 bg-white/10 px-5 py-4 backdrop-blur">
+                <p className="text-xs font-semibold uppercase tracking-wider text-cyan-200">
+                  Pending
+                </p>
 
-              <p className="mt-1 text-3xl font-extrabold">
-                {pendingCount}
-              </p>
+                <p className="mt-1 text-3xl font-extrabold">
+                  {pendingCount}
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-white/15 bg-white/10 px-5 py-4 backdrop-blur">
+                <p className="text-xs font-semibold uppercase tracking-wider text-cyan-200">
+                  Reviewed
+                </p>
+
+                <p className="mt-1 text-3xl font-extrabold">
+                  {reviewedCount}
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-white/15 bg-white/10 px-5 py-4 backdrop-blur">
+                <p className="text-xs font-semibold uppercase tracking-wider text-cyan-200">
+                  Active
+                </p>
+
+                <p className="mt-1 text-3xl font-extrabold">
+                  {activeCount}
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-white/15 bg-white/10 px-5 py-4 backdrop-blur">
+                <p className="text-xs font-semibold uppercase tracking-wider text-cyan-200">
+                  Inactive
+                </p>
+
+                <p className="mt-1 text-3xl font-extrabold">
+                  {inactiveCount}
+                </p>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Content */}
+      {/* ========================================================
+          CONTENT
+          ======================================================== */}
       <section className="mx-auto max-w-7xl px-5 py-10 sm:px-8 lg:py-14">
         {/* Error */}
         {error && (
@@ -405,14 +899,16 @@ export default function AdminSubscriptionsPage() {
           </div>
         )}
 
-        {/* Success */}
+        {/* Notice */}
         {notice && (
           <div
             role="status"
             className="mb-6 flex items-start justify-between gap-4 rounded-2xl border border-green-200 bg-green-50 p-5 text-sm text-green-800"
           >
             <div>
-              <p className="font-bold">Action completed</p>
+              <p className="font-bold">
+                Action completed
+              </p>
 
               <p className="mt-1">{notice}</p>
             </div>
@@ -428,86 +924,313 @@ export default function AdminSubscriptionsPage() {
           </div>
         )}
 
-        {/* Toolbar */}
-        <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-          <div>
-            <h2 className="text-2xl font-extrabold text-[#000271]">
-              Pending review
-            </h2>
+        {/* Backend endpoint warnings */}
+        {endpointWarnings.length > 0 && (
+          <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900">
+            <p className="font-bold">
+              Some subscription sections are waiting for their
+              backend endpoints.
+            </p>
 
-            <p className="mt-1 text-sm text-slate-500">
-              Payments submitted by Store Front merchants.
+            <p className="mt-1 leading-6">
+              The existing pending-payment endpoint is still usable.
+              The sections below will populate automatically once
+              their backend endpoints are implemented.
+            </p>
+
+            <ul className="mt-3 list-disc space-y-1 pl-5">
+              {endpointWarnings.map((warning) => (
+                <li key={warning}>{warning}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {/* ======================================================
+            SUMMARY
+            ====================================================== */}
+        <section className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <p className="text-sm font-medium text-slate-500">
+              Pending payments
+            </p>
+
+            <p className="mt-3 text-3xl font-extrabold text-[#000271]">
+              {pendingCount}
+            </p>
+
+            <p className="mt-1 text-xs text-slate-500">
+              Awaiting administrator review
             </p>
           </div>
 
-          <button
-            type="button"
-            onClick={() => void loadPendingSubscriptions()}
-            disabled={loading}
-            className="inline-flex items-center justify-center rounded-xl border border-slate-300 bg-white px-5 py-3 text-sm font-bold text-[#000271] transition hover:border-[#17acdd] hover:bg-cyan-50 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {loading ? "Refreshing..." : "Refresh payments"}
-          </button>
-        </div>
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <p className="text-sm font-medium text-slate-500">
+              Approved payments
+            </p>
 
-        {/* Loading */}
+            <p className="mt-3 text-3xl font-extrabold text-emerald-600">
+              {approvedCount}
+            </p>
+
+            <p className="mt-1 text-xs text-slate-500">
+              Previously approved
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <p className="text-sm font-medium text-slate-500">
+              Rejected payments
+            </p>
+
+            <p className="mt-3 text-3xl font-extrabold text-red-600">
+              {rejectedCount}
+            </p>
+
+            <p className="mt-1 text-xs text-slate-500">
+              Previously rejected
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <p className="text-sm font-medium text-slate-500">
+              Premium access
+            </p>
+
+            <p className="mt-3 text-3xl font-extrabold text-[#000271]">
+              {activeCount}
+            </p>
+
+            <p className="mt-1 text-xs text-slate-500">
+              Currently active Premium subscribers
+            </p>
+          </div>
+        </section>
+
+        {/* ======================================================
+            TABS
+            ====================================================== */}
+        <section className="mb-8 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+          <div className="border-b border-slate-200 p-3">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
+              {TABS.map((tab) => {
+                const selected = activeTab === tab.key;
+
+                let count = 0;
+
+                if (tab.key === "pending") {
+                  count = pendingCount;
+                }
+
+                if (tab.key === "reviewed") {
+                  count = reviewedCount;
+                }
+
+                if (tab.key === "active") {
+                  count = activeCount;
+                }
+
+                if (tab.key === "inactive") {
+                  count = inactiveCount;
+                }
+
+                return (
+                  <button
+                    key={tab.key}
+                    type="button"
+                    onClick={() => {
+                      setActiveTab(tab.key);
+                      setError("");
+                      setNotice("");
+                    }}
+                    className={`rounded-2xl px-4 py-4 text-left transition ${
+                      selected
+                        ? "bg-[#000271] text-white shadow-sm"
+                        : "text-slate-700 hover:bg-slate-50"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-sm font-extrabold">
+                        {tab.label}
+                      </span>
+
+                      <span
+                        className={`rounded-full px-2.5 py-1 text-xs font-extrabold ${
+                          selected
+                            ? "bg-white/15 text-white"
+                            : "bg-slate-100 text-slate-700"
+                        }`}
+                      >
+                        {count}
+                      </span>
+                    </div>
+
+                    <p
+                      className={`mt-1 text-xs leading-5 ${
+                        selected
+                          ? "text-blue-100"
+                          : "text-slate-500"
+                      }`}
+                    >
+                      {tab.description}
+                    </p>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="flex flex-col justify-between gap-4 px-5 py-5 sm:flex-row sm:items-center sm:px-7">
+            <div>
+              <h2 className="text-2xl font-extrabold text-[#000271]">
+                {
+                  TABS.find(
+                    (tab) => tab.key === activeTab
+                  )?.label
+                }
+              </h2>
+
+              <p className="mt-1 text-sm text-slate-500">
+                {
+                  TABS.find(
+                    (tab) => tab.key === activeTab
+                  )?.description
+                }
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() =>
+                void loadAllSubscriptions(false)
+              }
+              disabled={loading || refreshing}
+              className="inline-flex items-center justify-center rounded-xl border border-slate-300 bg-white px-5 py-3 text-sm font-bold text-[#000271] transition hover:border-[#17acdd] hover:bg-cyan-50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {refreshing
+                ? "Refreshing..."
+                : "Refresh subscriptions"}
+            </button>
+          </div>
+        </section>
+
+        {/* ======================================================
+            LOADING
+            ====================================================== */}
         {loading ? (
           <div className="rounded-3xl border border-slate-200 bg-white px-6 py-20 text-center shadow-sm">
             <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-[#17acdd]" />
 
             <p className="mt-5 font-semibold text-slate-700">
-              Loading pending payments...
+              Loading subscriptions...
             </p>
 
             <p className="mt-1 text-sm text-slate-500">
-              Please wait while we retrieve the payment queue.
+              Please wait while we retrieve the Store Front
+              subscription records.
             </p>
           </div>
-        ) : subscriptions.length === 0 ? (
-          /* Empty state */
+        ) : currentSubscriptions.length === 0 ? (
+          /* ====================================================
+             EMPTY STATE
+             ==================================================== */
           <div className="rounded-3xl border border-dashed border-slate-300 bg-white px-6 py-20 text-center shadow-sm">
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-cyan-50 text-2xl">
-              ✓
+              {activeTab === "pending"
+                ? "✓"
+                : activeTab === "reviewed"
+                  ? "◷"
+                  : activeTab === "active"
+                    ? "★"
+                    : "○"}
             </div>
 
             <h3 className="mt-6 text-xl font-extrabold text-[#000271]">
-              No pending payments
+              {activeTab === "pending"
+                ? "No pending payments"
+                : activeTab === "reviewed"
+                  ? "No payment history"
+                  : activeTab === "active"
+                    ? "No active Premium subscribers"
+                    : "No inactive Premium subscribers"}
             </h3>
 
             <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-500">
-              There are currently no Store Front subscription
-              payments waiting for administrator review.
+              {activeTab === "pending"
+                ? "There are currently no Store Front subscription payments waiting for administrator review."
+                : activeTab === "reviewed"
+                  ? "Approved and rejected payment records will appear here."
+                  : activeTab === "active"
+                    ? "Currently active Premium subscriptions will appear here."
+                    : "Expired, ended, or otherwise inactive Premium subscriptions will appear here."}
             </p>
           </div>
         ) : (
-          /* Payment list */
+          /* ====================================================
+             SUBSCRIPTION LIST
+             ==================================================== */
           <div className="space-y-6">
-            {subscriptions.map((subscription) => {
+            {currentSubscriptions.map((subscription) => {
               const isProcessing =
                 processingId === subscription._id;
+
+              const receiptUrl =
+                getReceiptUrl(subscription);
+
+              const approved =
+                isApproved(subscription);
+
+              const rejected =
+                isRejected(subscription);
 
               return (
                 <article
                   key={subscription._id}
                   className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm"
                 >
-                  {/* Card header */}
+                  {/* =================================================
+                      CARD HEADER
+                      ================================================= */}
                   <div className="border-b border-slate-100 bg-slate-50 px-5 py-5 sm:px-7">
-                    <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
+                    <div className="flex flex-col justify-between gap-5 lg:flex-row lg:items-center">
                       <div>
                         <div className="flex flex-wrap items-center gap-2">
-                          <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-bold uppercase tracking-wide text-amber-800">
-                            Awaiting review
+                          <span
+                            className={`rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide ${getStatusClasses(
+                              subscription.status
+                            )}`}
+                          >
+                            {getStatusLabel(
+                              subscription.status
+                            )}
                           </span>
+
+                          {approved && (
+                            <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold uppercase tracking-wide text-emerald-800">
+                              Payment approved
+                            </span>
+                          )}
+
+                          {rejected && (
+                            <span className="rounded-full bg-red-100 px-3 py-1 text-xs font-bold uppercase tracking-wide text-red-800">
+                              Payment rejected
+                            </span>
+                          )}
 
                           <span className="rounded-full bg-slate-200 px-3 py-1 text-xs font-bold uppercase tracking-wide text-slate-700">
                             Manual transfer
                           </span>
+
+                          {subscription.plan?.key ===
+                            "premium" && (
+                            <span className="rounded-full bg-[#000271] px-3 py-1 text-xs font-bold uppercase tracking-wide text-white">
+                              Premium
+                            </span>
+                          )}
                         </div>
 
                         <h3 className="mt-3 text-xl font-extrabold text-[#000271]">
-                          {subscription.plan?.name ||
-                            "Store Front Plan"}
+                          {getPlanName(subscription)}
                         </h3>
 
                         <p className="mt-1 text-sm text-slate-500">
@@ -520,7 +1243,7 @@ export default function AdminSubscriptionsPage() {
 
                       <div className="lg:text-right">
                         <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                          Amount submitted
+                          Amount
                         </p>
 
                         <p className="mt-1 text-2xl font-extrabold text-[#000271]">
@@ -531,13 +1254,16 @@ export default function AdminSubscriptionsPage() {
                         </p>
 
                         <p className="mt-1 text-sm font-semibold capitalize text-slate-600">
-                          {subscription.billingInterval} billing
+                          {subscription.billingInterval}{" "}
+                          billing
                         </p>
                       </div>
                     </div>
                   </div>
 
-                  {/* Details */}
+                  {/* =================================================
+                      DETAILS
+                      ================================================= */}
                   <div className="grid gap-6 px-5 py-6 sm:px-7 lg:grid-cols-3">
                     {/* Merchant */}
                     <div>
@@ -565,12 +1291,14 @@ export default function AdminSubscriptionsPage() {
                           "No reference provided"}
                       </p>
 
-                      <p className="mt-2 text-xs text-slate-500">
-                        Submitted{" "}
-                        {formatDate(
-                          subscription.paymentSubmittedAt
-                        )}
-                      </p>
+                      {subscription.paymentSubmittedAt && (
+                        <p className="mt-2 text-xs text-slate-500">
+                          Submitted{" "}
+                          {formatDate(
+                            subscription.paymentSubmittedAt
+                          )}
+                        </p>
+                      )}
                     </div>
 
                     {/* Billing */}
@@ -587,16 +1315,93 @@ export default function AdminSubscriptionsPage() {
                         {subscription.plan?.key ===
                         "premium"
                           ? "Premium Store Front"
-                          : subscription.plan?.name ||
-                            "Store Front subscription"}
+                          : getPlanName(
+                              subscription
+                            )}
                       </p>
                     </div>
                   </div>
 
-                  {/* Actions */}
-                  <div className="flex flex-col gap-3 border-t border-slate-100 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-7">
+                  {/* =================================================
+                      ACTIVE PERIOD
+                      ================================================= */}
+                  {(subscription.currentPeriodStart ||
+                    subscription.currentPeriodEnd) && (
+                    <div className="border-t border-slate-100 bg-slate-50 px-5 py-5 sm:px-7">
+                      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+                        <div>
+                          <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                            Period started
+                          </p>
+
+                          <p className="mt-2 text-sm font-bold text-slate-800">
+                            {formatDate(
+                              subscription.currentPeriodStart
+                            )}
+                          </p>
+                        </div>
+
+                        <div>
+                          <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                            Expiry date
+                          </p>
+
+                          <p className="mt-2 text-sm font-bold text-[#000271]">
+                            {formatDate(
+                              subscription.currentPeriodEnd
+                            )}
+                          </p>
+                        </div>
+
+                        <div>
+                          <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                            Reviewed
+                          </p>
+
+                          <p className="mt-2 text-sm font-bold text-slate-800">
+                            {formatDate(
+                              subscription.reviewedAt
+                            )}
+                          </p>
+                        </div>
+
+                        <div>
+                          <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                            Cancellation
+                          </p>
+
+                          <p className="mt-2 text-sm font-bold text-slate-800">
+                            {subscription.cancelAtPeriodEnd
+                              ? "Scheduled"
+                              : "Not scheduled"}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* =================================================
+                      REJECTION REASON
+                      ================================================= */}
+                  {rejected &&
+                    subscription.rejectionReason && (
+                      <div className="border-t border-red-100 bg-red-50 px-5 py-5 sm:px-7">
+                        <p className="text-xs font-bold uppercase tracking-wider text-red-500">
+                          Rejection reason
+                        </p>
+
+                        <p className="mt-2 text-sm leading-6 text-red-900">
+                          {subscription.rejectionReason}
+                        </p>
+                      </div>
+                    )}
+
+                  {/* =================================================
+                      RECEIPT + ACTIONS
+                      ================================================= */}
+                  <div className="flex flex-col gap-4 border-t border-slate-100 px-5 py-5 sm:px-7 lg:flex-row lg:items-center lg:justify-between">
                     <div>
-                      {subscription.receiptUrl ? (
+                      {receiptUrl ? (
                         <button
                           type="button"
                           onClick={() =>
@@ -615,31 +1420,82 @@ export default function AdminSubscriptionsPage() {
                       )}
                     </div>
 
-                    <div className="flex flex-col gap-3 sm:flex-row">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          openRejectModal(subscription)
-                        }
-                        disabled={isProcessing}
-                        className="rounded-xl border border-red-200 px-6 py-3 text-sm font-bold text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        Reject payment
-                      </button>
+                    {/* Pending actions only */}
+                    {activeTab === "pending" && (
+                      <div className="flex flex-col gap-3 sm:flex-row">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            openRejectModal(
+                              subscription
+                            )
+                          }
+                          disabled={isProcessing}
+                          className="rounded-xl border border-red-200 px-6 py-3 text-sm font-bold text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          Reject payment
+                        </button>
 
-                      <button
-                        type="button"
-                        onClick={() =>
-                          void handleApprove(subscription)
-                        }
-                        disabled={isProcessing}
-                        className="rounded-xl bg-[#000271] px-6 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-[#17acdd] disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        {isProcessing
-                          ? "Processing..."
-                          : "Approve & Activate"}
-                      </button>
-                    </div>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            void handleApprove(
+                              subscription
+                            )
+                          }
+                          disabled={isProcessing}
+                          className="rounded-xl bg-[#000271] px-6 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-[#17acdd] disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          {isProcessing
+                            ? "Processing..."
+                            : "Approve & Activate"}
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Reviewed metadata */}
+                    {activeTab === "reviewed" && (
+                      <div className="text-right text-xs text-slate-500">
+                        {approved
+                          ? "Payment was approved."
+                          : rejected
+                            ? "Payment was rejected."
+                            : "Payment has been reviewed."}
+                      </div>
+                    )}
+
+                    {/* Active subscriber metadata */}
+                    {activeTab === "active" && (
+                      <div className="text-right">
+                        <p className="text-xs font-bold uppercase tracking-wider text-emerald-600">
+                          Premium access active
+                        </p>
+
+                        <p className="mt-1 text-sm font-semibold text-slate-600">
+                          Expires{" "}
+                          {formatShortDate(
+                            subscription.currentPeriodEnd
+                          )}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Inactive subscriber metadata */}
+                    {activeTab === "inactive" && (
+                      <div className="text-right">
+                        <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                          Premium access inactive
+                        </p>
+
+                        <p className="mt-1 text-sm font-semibold text-slate-600">
+                          Ended{" "}
+                          {formatShortDate(
+                            subscription.currentPeriodEnd ||
+                              subscription.endedAt
+                          )}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </article>
               );
@@ -648,7 +1504,9 @@ export default function AdminSubscriptionsPage() {
         )}
       </section>
 
-      {/* Receipt Modal */}
+      {/* ========================================================
+          RECEIPT MODAL
+          ======================================================== */}
       {receiptSubscription && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4"
@@ -656,13 +1514,16 @@ export default function AdminSubscriptionsPage() {
           aria-modal="true"
           aria-labelledby="receipt-title"
           onMouseDown={(event) => {
-            if (event.target === event.currentTarget) {
+            if (
+              event.target ===
+              event.currentTarget
+            ) {
               setReceiptSubscription(null);
             }
           }}
         >
           <div className="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl">
-            {/* Modal header */}
+            {/* Receipt header */}
             <div className="flex items-center justify-between gap-4 border-b border-slate-200 px-5 py-4 sm:px-7">
               <div>
                 <p className="text-xs font-bold uppercase tracking-wider text-[#17acdd]">
@@ -677,6 +1538,14 @@ export default function AdminSubscriptionsPage() {
                     receiptSubscription
                   )}
                 </h2>
+
+                <p className="mt-1 text-xs text-slate-500">
+                  {getPlanName(
+                    receiptSubscription
+                  )}{" "}
+                  •{" "}
+                  {receiptSubscription.billingInterval}
+                </p>
               </div>
 
               <button
@@ -693,9 +1562,15 @@ export default function AdminSubscriptionsPage() {
 
             {/* Receipt */}
             <div className="min-h-0 flex-1 overflow-auto bg-slate-100 p-4 sm:p-7">
-              {receiptSubscription.receiptUrl ? (
+              {getReceiptUrl(
+                receiptSubscription
+              ) ? (
                 <iframe
-                  src={receiptSubscription.receiptUrl}
+                  src={
+                    getReceiptUrl(
+                      receiptSubscription
+                    ) || undefined
+                  }
                   title="Payment receipt"
                   className="h-[70vh] w-full rounded-2xl border border-slate-200 bg-white"
                 />
@@ -707,15 +1582,15 @@ export default function AdminSubscriptionsPage() {
                     </p>
 
                     <p className="mt-1 text-sm text-slate-500">
-                      No receipt URL was supplied with this
-                      payment.
+                      No receipt URL was supplied with
+                      this payment.
                     </p>
                   </div>
                 </div>
               )}
             </div>
 
-            {/* Modal footer */}
+            {/* Receipt footer */}
             <div className="flex flex-col justify-between gap-3 border-t border-slate-200 px-5 py-4 sm:flex-row sm:items-center sm:px-7">
               <div className="text-sm text-slate-500">
                 Reference:{" "}
@@ -739,7 +1614,9 @@ export default function AdminSubscriptionsPage() {
         </div>
       )}
 
-      {/* Reject Modal */}
+      {/* ========================================================
+          REJECTION MODAL
+          ======================================================== */}
       {rejectingSubscription && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4"
@@ -747,7 +1624,10 @@ export default function AdminSubscriptionsPage() {
           aria-modal="true"
           aria-labelledby="reject-title"
           onMouseDown={(event) => {
-            if (event.target === event.currentTarget) {
+            if (
+              event.target ===
+              event.currentTarget
+            ) {
               closeRejectModal();
             }
           }}
@@ -772,7 +1652,9 @@ export default function AdminSubscriptionsPage() {
                 <button
                   type="button"
                   onClick={closeRejectModal}
-                  disabled={Boolean(processingId)}
+                  disabled={Boolean(
+                    processingId
+                  )}
                   className="text-xl font-bold text-slate-500 disabled:opacity-50"
                   aria-label="Close rejection dialog"
                 >
@@ -781,7 +1663,8 @@ export default function AdminSubscriptionsPage() {
               </div>
 
               <p className="mt-3 text-sm leading-6 text-slate-600">
-                You are rejecting the payment submitted by{" "}
+                You are rejecting the payment submitted
+                by{" "}
                 <strong>
                   {getMerchantName(
                     rejectingSubscription
@@ -789,8 +1672,11 @@ export default function AdminSubscriptionsPage() {
                 </strong>
                 .
               </p>
+            </div>
 
-              <div className="mt-4 rounded-2xl bg-slate-50 p-4">
+            {/* Payment summary */}
+            <div className="px-6 py-5">
+              <div className="rounded-2xl bg-slate-50 p-4">
                 <div className="flex items-center justify-between gap-4">
                   <span className="text-sm text-slate-500">
                     Amount
@@ -810,7 +1696,9 @@ export default function AdminSubscriptionsPage() {
                   </span>
 
                   <strong className="capitalize text-slate-800">
-                    {rejectingSubscription.billingInterval}
+                    {
+                      rejectingSubscription.billingInterval
+                    }
                   </strong>
                 </div>
 
@@ -828,7 +1716,7 @@ export default function AdminSubscriptionsPage() {
             </div>
 
             {/* Reason */}
-            <div className="px-6 py-5">
+            <div className="px-6 pb-5">
               <label
                 htmlFor="rejectionReason"
                 className="mb-2 block text-sm font-bold text-slate-800"
@@ -840,19 +1728,23 @@ export default function AdminSubscriptionsPage() {
                 id="rejectionReason"
                 value={rejectionReason}
                 onChange={(event) =>
-                  setRejectionReason(event.target.value)
+                  setRejectionReason(
+                    event.target.value
+                  )
                 }
                 maxLength={1000}
                 rows={5}
                 placeholder="Explain why this payment cannot be approved."
-                disabled={Boolean(processingId)}
+                disabled={Boolean(
+                  processingId
+                )}
                 className="w-full resize-none rounded-2xl border border-slate-300 px-4 py-3 text-sm outline-none transition placeholder:text-slate-400 focus:border-[#17acdd] focus:ring-2 focus:ring-cyan-100 disabled:bg-slate-100"
               />
 
               <div className="mt-2 flex justify-between text-xs text-slate-400">
                 <span>
-                  The merchant will be able to submit a
-                  corrected receipt.
+                  The merchant can submit a corrected
+                  receipt.
                 </span>
 
                 <span>
@@ -866,7 +1758,9 @@ export default function AdminSubscriptionsPage() {
               <button
                 type="button"
                 onClick={closeRejectModal}
-                disabled={Boolean(processingId)}
+                disabled={Boolean(
+                  processingId
+                )}
                 className="rounded-xl border border-slate-300 bg-white px-5 py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Cancel
@@ -874,7 +1768,9 @@ export default function AdminSubscriptionsPage() {
 
               <button
                 type="button"
-                onClick={() => void handleReject()}
+                onClick={() =>
+                  void handleReject()
+                }
                 disabled={
                   Boolean(processingId) ||
                   !rejectionReason.trim()
